@@ -13,7 +13,7 @@ app.use(express.json());
 
 const allowedOrigins = [
   'http://localhost:5173', // local dev
-  'https://health-axis-frontend-neon.vercel.app/', // production frontend
+  'https://health-axis-frontend-neon.vercel.app', // production frontend
 ];
 
 app.use(
