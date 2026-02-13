@@ -35,6 +35,11 @@ app.use(
   }),
 );
 
+app.get('/api/test', (req, res) => {
+  res.json({ message: 'Backend reachable!' });
+});
+
+
 app.use(
     session({
         store: new PgSession({
