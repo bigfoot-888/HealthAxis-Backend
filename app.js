@@ -19,11 +19,22 @@ if (process.env.NODE_ENV === 'production') {
     });
 }
 
+const allowedOrigins = [
+  'http://localhost:5173', // local dev
+  'https://health-axis-frontend-neon.vercel.app/', // production frontend
+];
+
 app.use(
-    cors({
-        origin: 'http://localhost:5173', // React app URL
-        credentials: true, // To send cookies
-    }),
+  cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true,
+  }),
 );
 
 app.use(

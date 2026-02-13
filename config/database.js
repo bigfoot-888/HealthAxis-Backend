@@ -1,16 +1,22 @@
 const { Sequelize } = require('sequelize');
 
-const sequelize = new Sequelize(
-    process.env.PGDATABASE,
-    process.env.PGUSER,
-    process.env.PGPASSWORD,
-    {
-        host: process.env.PGHOST,
-        dialect: 'postgres',
-        port: process.env.PGPORT,
-        logging: console.log
-    },
-);
+const sequelize = process.env.DATABASE_URL
+    ? new Sequelize(process.env.DATABASE_URL, {
+          dialect: 'postgres',
+          logging: console.log,
+          dialectOptions: { ssl: { rejectUnauthorized: false } },
+      })
+    : new Sequelize(
+          process.env.PGDATABASE,
+          process.env.PGUSER,
+          process.env.PGPASSWORD,
+          {
+              host: process.env.PGHOST,
+              port: process.env.PGPORT,
+              dialect: 'postgres',
+              logging: console.log,
+          },
+      );
 
 async function testDB() {
     try {
@@ -21,6 +27,6 @@ async function testDB() {
     }
 }
 
-testDB(); 
+testDB();
 
 module.exports = sequelize;
