@@ -8,6 +8,12 @@ const PgSession = connectPgSimple(session);
 
 const cors = require('cors');
 
+const morgan = require('morgan');
+
+// Log all requests to the console in 'dev' format
+app.use(morgan('dev'));
+
+
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
