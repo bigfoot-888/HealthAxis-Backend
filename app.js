@@ -71,11 +71,11 @@ app.use('/api/agendas', agendaRouter);
 app.use(errorMiddleware);
 app.use(error404Middleware);
 
-app.use(express.static(path.join(__dirname, "build"))); 
+app.use(express.static(path.join(__dirname, "dist"))); 
 // or "dist" if using Vite
 
 app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "build", "index.html"));
+  res.sendFile(path.join(__dirname, "dist", "index.html"));
 });
 
 
