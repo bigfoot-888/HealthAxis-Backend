@@ -1,12 +1,23 @@
-
 if (process.env.NODE_ENV !== "production") {
-  require('dotenv').config(); // load .env only in dev
+  require('dotenv').config();
 }
+
 const app = require('./app');   
-const PORT = process.env.PORT || 2000;
-const pool = require('./config/pool.js')
 const sequelize = require('./config/database.js'); 
 
-app.listen(PORT, () => {
-  console.log(`Server listening at http://localhost:${PORT}`);
-});
+const User = require('./models/user-model');
+const Patient = require('./models/patient-model');
+const { Agenda, AgendaPeriod, associate: associateAgendas } = require('./models/agenda-model');
+
+(async () => {
+  if (process.env.RUN_DB_SYNC === "true") {
+    console.log("Running DB sync...");
+    await sequelize.sync({ force: true });
+    console.log("Tables created!");
+  }
+
+  const PORT = process.env.PORT || 2000;
+  app.listen(PORT, () => {
+    console.log(`Server listening on ${PORT}`);
+  });
+})();

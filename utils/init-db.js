@@ -7,7 +7,7 @@ const { Agenda, AgendaPeriod, associate: associateAgendas } = require('../models
 associateAgendas();
 
 (async () => {
-  await sequelize.sync({ force: true }); // drops & recreates tables
+  await sequelize.sync({ force: false }); // drops & recreates tables
   console.log("Tables created!");
 })();
 
