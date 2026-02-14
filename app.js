@@ -40,21 +40,21 @@ app.get('/api/test', (req, res) => {
 });
 
 
-// app.use(
-//     session({
-//         store: new PgSession({
-//             pool, // Connection pool
-//             createTableIfMissing: true,
-//         }),
-//         secret: process.env.SESSION_SECRET,
-//         resave: false, // don't save session if unmodified
-//         saveUninitialized: false, // don't create empty sessions
-//         cookie: {
-//             httpOnly: true,
-//             maxAge: 1000 * 60 * 60 * 24, // 1 day
-//         },
-//     }),
-// );
+app.use(
+    session({
+        store: new PgSession({
+            pool, // Connection pool
+            createTableIfMissing: true,
+        }),
+        secret: process.env.SESSION_SECRET,
+        resave: false, // don't save session if unmodified
+        saveUninitialized: false, // don't create empty sessions
+        cookie: {
+            httpOnly: true,
+            maxAge: 1000 * 60 * 60 * 24, // 1 day
+        },
+    }),
+);
 
 const userRouter = require('./api/routes/user-routes');
 const patientRouter = require('./api/routes/patient-routes.js');
@@ -70,5 +70,13 @@ app.use('/api/agendas', agendaRouter);
 
 app.use(errorMiddleware);
 app.use(error404Middleware);
+
+app.use(express.static(path.join(__dirname, "build"))); 
+// or "dist" if using Vite
+
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "build", "index.html"));
+});
+
 
 module.exports = app;
