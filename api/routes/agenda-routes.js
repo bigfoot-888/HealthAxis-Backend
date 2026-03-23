@@ -9,6 +9,7 @@ const validateRequest = require('../../middlewares/validate-requests');
 router.post('/new', createAgendaRules, validateRequest, agendaController.createAgendaController);
 
 router.get('/', agendaController.getAgendasController);
+router.get('/filtered', agendaController.getFilteredAgendasController);
 router.get('/:uuid', agendaController.getAgendaController);
 
 router.get('/edit/:uuid', agendaController.getAgendaController);

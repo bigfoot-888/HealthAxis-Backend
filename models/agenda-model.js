@@ -9,7 +9,7 @@ const Agenda = sequelize.define(
             type: DataTypes.ENUM('ACTIVE', 'INACTIVE'),
             defaultValue: 'ACTIVE',
         },
-        uuid: { type: DataTypes.STRING(36), allowNull: false },
+        uuid: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, allowNull: false }
     }
 );
 
@@ -26,25 +26,11 @@ const AgendaPeriod = sequelize.define(
             type: DataTypes.ENUM('ACTIVE', 'INACTIVE'),
             defaultValue: 'ACTIVE',
         },
-        uuid: { type: DataTypes.STRING(36), allowNull: false },
+        uuid: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, allowNull: false }
     }
 )
-
-const associate = () => {
-  Agenda.hasMany(AgendaPeriod, { foreignKey: 'agendaId' });
-
-  Agenda.hasOne(AgendaPeriod, {
-    as: 'activePeriod',
-    foreignKey: 'agendaId',
-    scope: { state: 'ACTIVE' },
-    constraints: false,
-  });
-
-  AgendaPeriod.belongsTo(Agenda, { foreignKey: 'agendaId' });
-};
 
 module.exports = {
     Agenda,
     AgendaPeriod,
-    associate
 };

@@ -1,19 +1,25 @@
+const express = require('express');
+const router = express.Router();
 
-const express = require('express')
-const router = express.Router(); 
+const patientController = require('../controllers/patient-controller');
 
-const patientController = require('../controllers/patient-controller'); 
+router.post('/new', patientController.createPatientController);
 
-router.post("/new", patientController.createPatientController); 
+router.post('/import', patientController.importPatientsController);
 
-router.post("/import", patientController.importPatientsController); 
+router.get('/', patientController.getPatientsController);
 
-router.get("/", patientController.getPatientsController); 
+router.get('/filtered', patientController.getFilteredPatientsController);
 
-router.patch("/deactivate", patientController.deactivatePatientController)
+router.patch('/deactivate', patientController.deactivatePatientController);
+router.patch('/reactivate', patientController.reactivatePatientController);
 
-router.get("/:id", patientController.getPatientController)
+router.get('/:uuid/flow', patientController.getPatientFlowController);
 
-router.put("/edit/:id", patientController.updatePatientController); 
+router.get('/:uuid/detail', patientController.getPatientDetailController);
 
-module.exports = router; 
+router.get('/:id', patientController.getPatientController);
+
+router.put('/edit/:id', patientController.updatePatientController);
+
+module.exports = router;

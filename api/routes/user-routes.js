@@ -12,6 +12,8 @@ router.post("/import", userController.importUsersController);
 
 router.get("/", userController.getUsersController); 
 
+router.get("/filtered", userController.getFilteredUsersController);
+
 router.get("/profile", userController.getProfile); 
 
 router.patch("/deactivate", userController.deactivateUserController)

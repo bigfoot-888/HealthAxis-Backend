@@ -1,7 +1,7 @@
 const userService = require('../../modules/user-service');
 
 async function createUserController(req, res) {
-    const { name, surname, email, password, role, phone } = req.body;
+    const { name, surname, email, password, roles, phone } = req.body;
     const userData = {
         name,
         surname,
@@ -9,7 +9,7 @@ async function createUserController(req, res) {
         password,
         phone,
     };
-    const newUser = await userService.createUser(userData);
+    const newUser = await userService.createUser(userData, roles);
     res.status(201).json(newUser);
 }
 
@@ -20,6 +20,13 @@ async function getUsersController(req, res) {
     } catch (err) {
         console.log(err);
     }
+}
+
+async function getFilteredUsersController(req, res) {
+    const query = req.query.query || '';
+    const limit = parseInt(req.query.limit) || 20;
+    const users = await userService.getFilteredUsers(query, limit);
+    res.status(201).json(users);
 }
 
 async function deactivateUserController(req, res) {
@@ -78,14 +85,14 @@ async function getUserController(req, res) {
 
 async function updateUserController(req, res) {
     const uuid = req.params.id;
-    const { name, surname, email, phone } = req.body;
+    const { name, surname, email, phone, roles } = req.body;
     const userData = {
         name,
         surname,
         email,
         phone,
     };
-    const user = userService.updateUser(uuid, userData);
+    const user = userService.updateUser(uuid, userData, roles);
     return res.status(201).json(user);
 }
 
@@ -116,6 +123,7 @@ module.exports = {
     validateLogin,
     importUsersController,
     getUserController,
+    getFilteredUsersController,
     logout,
     checkSession,
     getProfile,

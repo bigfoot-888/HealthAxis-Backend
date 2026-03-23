@@ -29,6 +29,13 @@ async function getAgendasController(req, res) {
     res.status(201).json(agendas);
 }
 
+async function getFilteredAgendasController(req, res) {
+    const query = req.query.query || '';
+    const limit = parseInt(req.query.limit) || 20;
+    const agendas = await agendaService.getFilteredAgendas(query, limit);
+    res.status(201).json(agendas);
+}
+
 async function getAgendaController(req, res) {
     const uuid = req.params.uuid;
     const agenda = await agendaService.getAgenda(uuid);
@@ -57,7 +64,7 @@ async function updateAgendaController(req, res) {
     const uuid = req.params.uuid;
     const { name } = req.body;
     const agendaData = { name };
-    const agenda = agendaService.updateAgenda(uuid, userData);
+    const agenda = agendaService.updateAgenda(uuid, agendaData);
     return res.status(201).json(agenda);
 }
 
@@ -86,6 +93,8 @@ module.exports = {
     createAgendaPeriodController,
 
     getAgendasController,
+    getFilteredAgendasController,
+
     openAgendaPeriodController,
     closeAgendaPeriodController,
     cancelAgendaPeriodController,

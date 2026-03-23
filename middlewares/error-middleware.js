@@ -12,7 +12,10 @@ function errorMiddlware(err, req, res, next) {
                 message: err.message || 'Ha ocurrido un error inesperado.',
                 details: err.details,
             });
-    } else return res.status(500).json({ message: 'Internal server error.' });
+    } else {
+        console.log(err.message)
+        return res.status(500).json({ message: 'Internal server error.' });
+    }
 }
 
 module.exports = errorMiddlware;

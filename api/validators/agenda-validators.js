@@ -29,6 +29,7 @@ const updateAgendaRules = [
                     name: value,
                 });
             }
+            console.log("hola hola hola")
         }),
 ]
 
