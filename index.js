@@ -5,9 +5,9 @@ if (process.env.NODE_ENV !== "production") {
 const app = require('./app');   
 const sequelize = require('./config/database.js'); 
 
-const User = require('./models/user-model');
-const Patient = require('./models/patient-model');
-const { Agenda, AgendaPeriod, associate: associateAgendas } = require('./models/agenda-model');
+const User = require('./models/user.model');
+const Patient = require('./models/patient.model');
+const { Agenda, AgendaPeriod, associate: associateAgendas } = require('./models/agenda.model');
 
 (async () => {
   if (process.env.RUN_DB_SYNC === "true") {

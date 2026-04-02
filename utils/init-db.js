@@ -1,104 +1,162 @@
 require('dotenv').config();
 const sequelize = require('../config/database');
-const { User } = require('../models/user-model');
-const { Patient } = require('../models/patient-model');
-const { Appointment } = require('../models/appointment-model');
-const { Agenda, AgendaPeriod } = require('../models/agenda-model');
-const { Role } = require('../models/role-model');
-const { ClinicalDocument, ClinicalDocumentEntity, ClinicalAttachment, ClinicalDocumentUser } = require('../models/clinical-document-model');
-const {Treatment, TreatmentUser} = require('../models/treatment-model'); 
-const {Diagnosis, DiagnosisUser} = require('../models/diagnosis-model')
-const {PatientFlow, FlowEdge, FlowEvent} = require('../models/patient-flow'); 
-const {UserDashboard, DashboardComponent} = require('../models/dashboard-model'); 
+const { User } = require('../models/user.model');
+const { Patient } = require('../models/patient.model');
+const { Appointment } = require('../models/appointment.model');
+const { Agenda, AgendaPeriod } = require('../models/agenda.model');
+const { Role, UserRole } = require('../models/role.model');
+const { ClinicalDocument, ClinicalDocumentEntity, ClinicalAttachment, ClinicalDocumentUser, ClinicalDocumentAndAttachment, ClinicalDocumentAndEntity } = require('../models/clinical-document.model');
+const {Treatment, TreatmentUser} = require('../models/treatment.model'); 
+const {Diagnosis, DiagnosisUser, DiagnosisTreatment} = require('../models/diagnosis.model')
+const {PatientFlow, FlowEdge, FlowEvent} = require('../models/patient-flow.model'); 
+const {UserDashboard, DashboardComponent} = require('../models/dashboard.model'); 
+const {AuditLog} = require('../models/audit-log.model')
+
 const associate = () => {
-    console.log('Models found in Sequelize instance:', Object.keys(sequelize.models));
-    // Agenda associations
-    Agenda.hasMany(AgendaPeriod, { foreignKey: 'agendaId' });
+    // ===== Agenda associations =====
+    Agenda.hasMany(AgendaPeriod, {
+        foreignKey: 'agendaId',
+        sourceKey: 'id', 
+        as: 'periods', 
+    });
     Agenda.hasOne(AgendaPeriod, {
         as: 'activePeriod',
         foreignKey: 'agendaId',
-        scope: { state: 'ACTIVE' },
+        sourceKey: 'id', 
+        scope: { status: 'ACTIVE' },
         constraints: false,
     });
-    AgendaPeriod.belongsTo(Agenda, { foreignKey: 'agendaId' });
-    Agenda.hasMany(Appointment, { foreignKey: 'agendaId' });
-    Appointment.belongsTo(Agenda, { foreignKey: 'agendaId', as: 'agenda' });
+    AgendaPeriod.belongsTo(Agenda, {
+        foreignKey: 'agendaId',
+        targetKey: 'id', 
+        as: 'agenda', 
+    });
+    Agenda.hasMany(Appointment, {
+        foreignKey: 'agendaId',
+        sourceKey: 'id',
+        as: 'appointments', 
+    });
+    Appointment.belongsTo(Agenda, {
+        foreignKey: 'agendaId',
+        targetKey: 'id',
+        as: 'agenda',
+    });
 
-    // Appointment associations
-    User.hasMany(Appointment, { foreignKey: 'userId', as: 'appointments' });
-    Appointment.belongsTo(User, { foreignKey: 'userId', as: 'user' });
-    Patient.hasMany(Appointment, { foreignKey: 'patientId', as: 'appointments' });
-    Appointment.belongsTo(Patient, { foreignKey: 'patientId', as: 'patient' });
+    // ===== Appointment associations =====
+    User.hasMany(Appointment, { foreignKey: 'userId', sourceKey: 'id', as: 'appointments' }); 
+    Appointment.belongsTo(User, { foreignKey: 'userId', targetKey: 'id', as: 'user' }); 
 
-    Appointment.hasMany(Diagnosis, { foreignKey: 'appointmentId', as: 'diagnoses' });
-    Diagnosis.belongsTo(Appointment, { foreignKey: 'appointmentId', as: 'appointment' });
+    Patient.hasMany(Appointment, { foreignKey: 'patientId', sourceKey: 'id', as: 'appointments' }); 
+    Appointment.belongsTo(Patient, { foreignKey: 'patientId', targetKey: 'id', as: 'patient' }); 
 
-    Appointment.hasMany(Treatment, { foreignKey: 'appointmentId', as: 'treatments' });
-    Treatment.belongsTo(Appointment, { foreignKey: 'appointmentId', as: 'appointment' });
+    Appointment.hasMany(Diagnosis, { foreignKey: 'appointmentId', sourceKey: 'id', as: 'diagnoses' }); 
+    Diagnosis.belongsTo(Appointment, { foreignKey: 'appointmentId', targetKey: 'id', as: 'appointment' }); 
 
-    // Role associations
-    User.belongsToMany(Role, { through: 'UserRoles', as: 'roles', foreignKey: 'userId' });
-    Role.belongsToMany(User, { through: 'UserRoles', as: 'users', foreignKey: 'roleId' });
+    Appointment.hasMany(Treatment, { foreignKey: 'appointmentId', sourceKey: 'id', as: 'treatments' }); 
+    Treatment.belongsTo(Appointment, { foreignKey: 'appointmentId', targetKey: 'id', as: 'appointment' }); 
 
-    // Clinical document associations
+    // ===== Role associations =====
+    User.belongsToMany(Role, {
+        through: UserRole,
+        as: 'roles',
+        foreignKey: 'userId',
+        otherKey: 'roleId', 
+        sourceKey: 'id', 
+        targetKey: 'id', 
+    });
+    Role.belongsToMany(User, {
+        through: UserRole,
+        as: 'users',
+        foreignKey: 'roleId',
+        otherKey: 'userId', 
+        sourceKey: 'id', 
+        targetKey: 'id', 
+    });
+
+    // ===== Clinical document associations =====
     ClinicalDocument.belongsToMany(ClinicalDocumentEntity, {
-        through: 'ClinicalDocumentsAndEntities',
+        through: ClinicalDocumentAndEntity,
         as: 'clinicalDocumentEntities',
         foreignKey: 'clinicalDocumentId',
         otherKey: 'clinicalDocumentEntityId',
+        sourceKey: 'id', 
+        targetKey: 'id', 
     });
     ClinicalDocumentEntity.belongsToMany(ClinicalDocument, {
-        through: 'ClinicalDocumentsAndEntities',
+        through: ClinicalDocumentAndEntity,
         as: 'clinicalDocuments',
         foreignKey: 'clinicalDocumentEntityId',
         otherKey: 'clinicalDocumentId',
+        sourceKey: 'id', 
+        targetKey: 'id', 
     });
+
     ClinicalDocument.belongsToMany(ClinicalAttachment, {
-        through: 'ClinicalDocumentsAndAttachments',
+        through: ClinicalDocumentAndAttachment,
         as: 'clinicalAttachments',
         foreignKey: 'clinicalDocumentId',
         otherKey: 'clinicalAttachmentId',
+        sourceKey: 'id', 
+        targetKey: 'id', 
     });
     ClinicalAttachment.belongsToMany(ClinicalDocument, {
-        through: 'ClinicalDocumentsAndAttachments',
+        through: ClinicalDocumentAndAttachment,
         as: 'clinicalDocuments',
         foreignKey: 'clinicalAttachmentId',
         otherKey: 'clinicalDocumentId',
+        sourceKey: 'id', 
+        targetKey: 'id', 
     });
 
-    User.hasMany(ClinicalAttachment, { foreignKey: 'userId', as: 'clinicalAttachments' });
-    ClinicalAttachment.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+    User.hasMany(ClinicalAttachment, { foreignKey: 'userId', sourceKey: 'id', as: 'clinicalAttachments' }); 
+    ClinicalAttachment.belongsTo(User, { foreignKey: 'userId', targetKey: 'id', as: 'user' }); 
 
-    ClinicalDocumentEntity.belongsTo(Diagnosis, { foreignKey: 'entityId', constraints: false, as: 'diagnosis' });
-    ClinicalDocumentEntity.belongsTo(Treatment, { foreignKey: 'entityId', constraints: false, as: 'treatment' });
+    ClinicalDocumentEntity.belongsTo(Diagnosis, {
+        foreignKey: 'entityId',
+        targetKey: 'id',
+        constraints: false,
+        as: 'diagnosis',
+    }); 
+    ClinicalDocumentEntity.belongsTo(Treatment, {
+        foreignKey: 'entityId',
+        targetKey: 'id',
+        constraints: false,
+        as: 'treatment',
+    }); 
 
     ClinicalDocument.belongsToMany(User, {
         through: ClinicalDocumentUser,
         as: 'users',
         foreignKey: 'clinicalDocumentId',
         otherKey: 'userId',
+        sourceKey: 'id', 
+        targetKey: 'id', 
     });
-
     User.belongsToMany(ClinicalDocument, {
         through: ClinicalDocumentUser,
         as: 'clinicalDocuments',
         foreignKey: 'userId',
         otherKey: 'clinicalDocumentId',
+        sourceKey: 'id', 
+        targetKey: 'id', 
     });
 
-    // Diagnosis and treatment associations
+    // ===== Diagnosis and treatment associations =====
     Diagnosis.belongsToMany(User, {
         through: DiagnosisUser,
         as: 'users',
         foreignKey: 'diagnosisId',
         otherKey: 'userId',
+        sourceKey: 'id', 
+        targetKey: 'id', 
     });
-
     User.belongsToMany(Diagnosis, {
         through: DiagnosisUser,
         as: 'diagnoses',
         foreignKey: 'userId',
         otherKey: 'diagnosisId',
+        sourceKey: 'id', 
+        targetKey: 'id', 
     });
 
     Treatment.belongsToMany(User, {
@@ -106,117 +164,73 @@ const associate = () => {
         as: 'users',
         foreignKey: 'treatmentId',
         otherKey: 'userId',
+        sourceKey: 'id', 
+        targetKey: 'id', 
     });
-
     User.belongsToMany(Treatment, {
         through: TreatmentUser,
         as: 'treatments',
         foreignKey: 'userId',
         otherKey: 'treatmentId',
+        sourceKey: 'id', 
+        targetKey: 'id', 
     });
 
     Treatment.belongsToMany(Diagnosis, {
-        through: 'DiagnosisTreatment',
+        through: DiagnosisTreatment,
         as: 'diagnoses',
         foreignKey: 'treatmentId',
         otherKey: 'diagnosisId',
+        sourceKey: 'id', 
+        targetKey: 'id', 
     });
     Diagnosis.belongsToMany(Treatment, {
-        through: 'DiagnosisTreatment',
+        through: DiagnosisTreatment,
         as: 'treatments',
         foreignKey: 'diagnosisId',
         otherKey: 'treatmentId',
+        sourceKey: 'id', 
+        targetKey: 'id', 
     });
 
-    // Patient associations
-    Patient.hasMany(Diagnosis, {
-        foreignKey: 'patientId',
-        as: 'diagnoses',
-    });
+    // ===== Patient associations =====
+    Patient.hasMany(Diagnosis, { foreignKey: 'patientId', sourceKey: 'id', as: 'diagnoses' });  
+    Diagnosis.belongsTo(Patient, { foreignKey: 'patientId', targetKey: 'id', as: 'patient' });  
 
-    Diagnosis.belongsTo(Patient, {
-        foreignKey: 'patientId',
-        as: 'patient',
-    });
+    Patient.hasMany(Treatment, { foreignKey: 'patientId', sourceKey: 'id', as: 'treatments' }); 
+    Treatment.belongsTo(Patient, { foreignKey: 'patientId', targetKey: 'id', as: 'patient' }); 
 
-    Patient.hasMany(Treatment, {
-        foreignKey: 'patientId',
-        as: 'treatments',
-    });
+    // ===== Patient flow associations =====
+    Patient.hasOne(PatientFlow, { foreignKey: 'patientId', sourceKey: 'id', as: 'flow' }); 
+    PatientFlow.belongsTo(Patient, { foreignKey: 'patientId', targetKey: 'id', as: 'patient' }); 
 
-    Treatment.belongsTo(Patient, {
-        foreignKey: 'patientId',
-        as: 'patient',
-    });
+    PatientFlow.hasMany(FlowEvent, { foreignKey: 'patientFlowId', sourceKey: 'id', as: 'events', onDelete: 'CASCADE' }); 
+    FlowEvent.belongsTo(PatientFlow, { foreignKey: 'patientFlowId', targetKey: 'id', as: 'flow' }); 
 
-    // Patient flow associations
+    FlowEvent.belongsTo(FlowEvent, { as: 'parent', foreignKey: 'parentEventId', targetKey: 'id' }); 
+    FlowEvent.hasMany(FlowEvent, { as: 'children', foreignKey: 'parentEventId', sourceKey: 'id' }); 
 
-    Patient.hasOne(PatientFlow, {
-        foreignKey: 'patientId',
-        as: 'flow'
-    })
+    FlowEdge.belongsTo(FlowEvent, { as: 'source', foreignKey: 'sourceEventId', targetKey: 'id', onDelete: 'CASCADE' }); 
+    FlowEdge.belongsTo(FlowEvent, { as: 'target', foreignKey: 'targetEventId', targetKey: 'id', onDelete: 'CASCADE' }); 
 
-    PatientFlow.belongsTo(Patient, {
-        foreignKey: 'patientId',
-        as: 'patient'
-    })
-
-    PatientFlow.hasMany(FlowEvent, {
-        foreignKey: 'patientFlowId',
-        as: 'events',
-        onDelete: 'CASCADE',
-    });
-
-    FlowEvent.belongsTo(PatientFlow, {
-        foreignKey: 'patientFlowId',
-        as: 'flow',
-    });
-
-    FlowEvent.belongsTo(FlowEvent, {
-        as: 'parent',
-        foreignKey: 'parentEventId',
-    });
-
-    FlowEvent.hasMany(FlowEvent, {
-        as: 'children',
-        foreignKey: 'parentEventId',
-    });
-
-    // FlowEdge -> FlowEvent (source)
-    FlowEdge.belongsTo(FlowEvent, {
-        as: 'source',
-        foreignKey: 'sourceEventId',
-        onDelete: 'CASCADE',
-    });
-
-    // FlowEdge → FlowEvent (target)
-    FlowEdge.belongsTo(FlowEvent, {
-        as: 'target',
-        foreignKey: 'targetEventId',
-        onDelete: 'CASCADE',
-    });
-
-    // Dashboard associations
-    User.hasOne(UserDashboard, {
-        foreignKey: 'userId',
-        as: 'dashboard',
-    });
-
-    UserDashboard.belongsTo(User, {
-        foreignKey: 'userId',
-        as: 'user',
-    });
+    // ===== Dashboard associations =====
+    User.hasOne(UserDashboard, { foreignKey: 'userId', sourceKey: 'id', as: 'dashboard' }); 
+    UserDashboard.belongsTo(User, { foreignKey: 'userId', targetKey: 'id', as: 'user' }); 
 
     UserDashboard.hasMany(DashboardComponent, {
         foreignKey: 'dashboardId',
+        sourceKey: 'id',
         as: 'components',
         onDelete: 'CASCADE',
-    });
+    }); 
+    DashboardComponent.belongsTo(UserDashboard, { foreignKey: 'dashboardId', targetKey: 'id', as: 'dashboard' }); 
 
-    DashboardComponent.belongsTo(UserDashboard, {
-        foreignKey: 'dashboardId',
-        as: 'dashboard',
-    });
+    // ===== Audit logs =====
+    User.hasMany(AuditLog, { foreignKey: 'userId', sourceKey: 'id', as: 'auditLogs' }); 
+    AuditLog.belongsTo(User, { foreignKey: 'userId', targetKey: 'id', as: 'user' }); 
+
+    Patient.hasMany(AuditLog, { foreignKey: 'patientId', sourceKey: 'id', as: 'auditLogs' });
+    AuditLog.belongsTo(Patient, { foreignKey: 'patientId', targetKey: 'id', as: 'patient' });
 };
 
 const syncDatabase = async () => {

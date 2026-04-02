@@ -54,18 +54,19 @@ app.use(
     }),
 );
 
-const userRouter = require('./api/routes/user-routes');
-const patientRouter = require('./api/routes/patient-routes.js');
-const authRouter = require('./api/routes/auth-routes');
-const agendaRouter = require('./api/routes/agenda-routes.js');
-const appointmentRouter = require('./api/routes/appointment-routes.js');
-const diagnosisRouter = require('./api/routes/diagnosis-routes.js');
-const treatmentRouter = require('./api/routes/treatment-routes.js');
-const clinicalDocumentRouter = require('./api/routes/clinical-document-routes.js'); 
-const dashboardRouter = require('./api/routes/dashboard-routes.js')
+const userRouter = require('./api/routes/user.routes');
+const patientRouter = require('./api/routes/patient.routes.js');
+const authRouter = require('./api/routes/auth.routes');
+const agendaRouter = require('./api/routes/agenda.routes.js');
+const appointmentRouter = require('./api/routes/appointment.routes.js');
+const diagnosisRouter = require('./api/routes/diagnosis.routes.js');
+const treatmentRouter = require('./api/routes/treatment.routes.js');
+const clinicalDocumentRouter = require('./api/routes/clinical-document.routes.js'); 
+const dashboardRouter = require('./api/routes/dashboard.routes.js'); 
+const fhirRouter = require('./api/routes/fhir.routes.js'); 
 
-const errorMiddleware = require('./middlewares/error-middleware');
-const error404Middleware = require('./middlewares/error-404-middleware.js');
+const errorMiddleware = require('./middlewares/error-handler.middleware');
+const error404Middleware = require('./middlewares/error404-handler.middleware.js');
 
 app.use('/api/users', userRouter);
 app.use('/api/auth', authRouter);
@@ -76,6 +77,8 @@ app.use('/api/diagnoses', diagnosisRouter);
 app.use('/api/treatments', treatmentRouter);
 app.use('/api/clinical-documents', clinicalDocumentRouter); 
 app.use('/api/dashboards', dashboardRouter); 
+
+app.use('/api/fhir', fhirRouter); 
 
 app.use(errorMiddleware);
 app.use(error404Middleware);

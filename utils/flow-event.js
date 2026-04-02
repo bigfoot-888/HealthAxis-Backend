@@ -1,5 +1,5 @@
 const NotFoundError = require('../errors/NotFoundError');
-const {FlowEvent, PatientFlow} = require('../models/index')
+const { FlowEvent, PatientFlow } = require('../models/index');
 
 const HORIZONTAL_SPACING = 250;
 const START_X = 100;
@@ -7,7 +7,6 @@ const START_Y = 200;
 
 async function createPrimaryFlowEvent({ patientId, type, title, transaction }) {
     // Get the flow
-    console.log(patientId)
     const flow = await PatientFlow.findOne({
         where: { patientId },
         transaction,
@@ -46,7 +45,7 @@ async function createPrimaryFlowEvent({ patientId, type, title, transaction }) {
             positionX,
             positionY,
         },
-        { transaction }
+        { transaction },
     );
 }
 
@@ -89,12 +88,7 @@ async function createSecondaryFlowEvent({ patientId, type, title, transaction, p
     const index = siblings.length;
     const total = siblings.length + 1;
 
-    const { x, y } = getRadialPosition(
-        parent.positionX,
-        parent.positionY,
-        index,
-        total
-    );
+    const { x, y } = getRadialPosition(parent.positionX, parent.positionY, index, total);
 
     return FlowEvent.create(
         {
@@ -107,11 +101,11 @@ async function createSecondaryFlowEvent({ patientId, type, title, transaction, p
             positionX: x,
             positionY: y,
         },
-        { transaction }
+        { transaction },
     );
 }
 
 module.exports = {
     createPrimaryFlowEvent,
-    createSecondaryFlowEvent
-}
+    createSecondaryFlowEvent,
+};
