@@ -29,7 +29,7 @@ async function searchFiltered(query, limit = 20, options = {}) {
     const safeQuery = `%${escapeLike(query)}%`;
 
     return await Agenda.findAll({
-        attributes: ['id', 'name'],
+        attributes: ['id', 'name', 'uuid'],
         where: {
             status: 'ACTIVE',
             name: { [Op.iLike]: safeQuery },
@@ -52,7 +52,10 @@ async function searchFiltered(query, limit = 20, options = {}) {
 async function findByUuid(uuid, options = {}) {
     return await Agenda.findOne({
         where: { uuid },
-        include: [{ model: AgendaPeriod, as: 'activePeriod' }],
+        include: [
+            { model: AgendaPeriod, as: 'activePeriod' },
+            { model: AgendaPeriod, as: 'periods' },
+        ],
         ...options,
     });
 }

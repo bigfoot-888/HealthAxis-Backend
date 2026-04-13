@@ -7,19 +7,22 @@ const createUserRules = require('../validators/user.validators');
 const validateRequest = require('../../middlewares/request-validator.middleware');
 const { validateUuidParam } = require('../../middlewares/valid-uuid.middleware');
 
-router.post('/', createUserRules, validateRequest, asyncHandler(userController.createUserController));
-router.post('/import', asyncHandler(userController.importUsersController));
+const requirePermission = require('../../middlewares/permissions.middleware'); 
+const {requireAuth} = require('../../middlewares/auth.middleware'); 
 
-router.get('/', asyncHandler(userController.getUsersController));
-router.get('/filtered', asyncHandler(userController.getFilteredUsersController));
-router.get('/profile', asyncHandler(userController.getProfile));
-router.get('/:uuid', validateUuidParam('uuid'), asyncHandler(userController.getUserController));
+router.use(requireAuth); 
 
-router.put('/:uuid', validateUuidParam('uuid'), asyncHandler(userController.updateUserController));
+router.post('/', requirePermission("user:create"), createUserRules, validateRequest, asyncHandler(userController.createUserController));
+router.post('/import', requirePermission("user:create"), asyncHandler(userController.importUsersController));
 
-router.patch('/:uuid/deactivate', validateUuidParam('uuid'), asyncHandler(userController.deactivateUserController));
-router.patch('/:uuid/reactivate', validateUuidParam('uuid'), asyncHandler(userController.reactivateUserController));
+router.get('/', requirePermission("user:read"), asyncHandler(userController.getUsersController));
+router.get('/filtered',requirePermission("user:read"), asyncHandler(userController.getFilteredUsersController));
+router.get('/profile', requirePermission("user:read"), asyncHandler(userController.getProfile));
+router.get('/:uuid', requirePermission("user:read"), validateUuidParam('uuid'), asyncHandler(userController.getUserController));
 
-router.post('/logout', asyncHandler(userController.logout));
+router.put('/:uuid', requirePermission("user:update"), validateUuidParam('uuid'), asyncHandler(userController.updateUserController));
+
+router.patch('/:uuid/deactivate', requirePermission("user:delete"), validateUuidParam('uuid'), asyncHandler(userController.deactivateUserController));
+router.patch('/:uuid/reactivate', requirePermission("user:update"), validateUuidParam('uuid'), asyncHandler(userController.reactivateUserController));
 
 module.exports = router;

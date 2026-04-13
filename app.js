@@ -38,21 +38,12 @@ app.get('/api/test', (req, res) => {
     res.json({ message: 'Backend reachable!' });
 });
 
-app.use(
-    session({
-        store: new PgSession({
-            pool, // Connection pool
-            createTableIfMissing: true,
-        }),
-        secret: process.env.SESSION_SECRET,
-        resave: false, // don't save session if unmodified
-        saveUninitialized: false, // don't create empty sessions
-        cookie: {
-            httpOnly: true,
-            maxAge: 1000 * 60 * 60 * 24, // 1 day
-        },
-    }),
-);
+const sessionMiddleware = require('./middlewares/session.middleware.js')
+const attachUserMiddleware = require('./middlewares/attach-user.middleware.js')
+
+app.set('trust proxy', 1);
+app.use(sessionMiddleware());
+app.use(attachUserMiddleware);
 
 const userRouter = require('./api/routes/user.routes');
 const patientRouter = require('./api/routes/patient.routes.js');
@@ -64,10 +55,12 @@ const treatmentRouter = require('./api/routes/treatment.routes.js');
 const clinicalDocumentRouter = require('./api/routes/clinical-document.routes.js'); 
 const dashboardRouter = require('./api/routes/dashboard.routes.js'); 
 const fhirRouter = require('./api/routes/fhir.routes.js'); 
+const roleRouter = require('./api/routes/role.routes.js'); 
 
 const errorMiddleware = require('./middlewares/error-handler.middleware');
 const error404Middleware = require('./middlewares/error404-handler.middleware.js');
 
+app.use('/api/roles', roleRouter); 
 app.use('/api/users', userRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/patients', patientRouter);

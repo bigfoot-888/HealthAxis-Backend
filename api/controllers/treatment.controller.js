@@ -3,12 +3,13 @@ const treatmentService = require('../../services/treatment.service');
 // ===== CREATE =====
 
 async function createTreatmentController(req, res) {
-    const { appointment, patient, users = [], diagnoses = [], ...treatmentData } = req.body;
+    const { appointment, patient, users = [], diagnosis, ...treatmentData } = req.body;
 
     const payload = {
         ...treatmentData,
         appointmentId: appointment?.id,
         patientId: patient?.id,
+        diagnosisId: diagnosis?.id
     };
 
     const mappedUsers = users.map(({ user, role, assignedAt }) => ({
@@ -19,11 +20,7 @@ async function createTreatmentController(req, res) {
         },
     }));
 
-    const mappedDiagnoses = diagnoses.map(({ diagnosis }) => ({
-        diagnosis: { id: diagnosis.id },
-    }));
-
-    const treatment = await treatmentService.createTreatment(payload, mappedUsers, mappedDiagnoses);
+    const treatment = await treatmentService.createTreatment(payload, mappedUsers);
 
     res.status(201).json(treatment);
 }
@@ -31,7 +28,7 @@ async function createTreatmentController(req, res) {
 // ===== READ =====
 
 async function getTreatmentsController(req, res) {
-    const treatments = await treatmentService.getTreatments();
+    const treatments = await treatmentService.getTreatments(req.query);
     res.status(200).json(treatments);
 }
 

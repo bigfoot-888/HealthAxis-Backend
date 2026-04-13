@@ -3,7 +3,7 @@ const appointmentService = require('../../services/appointment.service');
 // ===== CREATE =====
 
 async function createAppointmentController(req, res) {
-    const { reason, notes, startTime, location, type, agenda, user, patient } = req.body;
+    const { reason, notes, startTime, location, type, user, patient } = req.body;
 
     const appointmentData = {
         reason,
@@ -11,7 +11,6 @@ async function createAppointmentController(req, res) {
         startTime,
         location,
         type,
-        agendaId: agenda?.id,
         userId: user?.id,
         patientId: patient?.id,
     };
@@ -20,10 +19,16 @@ async function createAppointmentController(req, res) {
     res.status(201).json(newAppointment);
 }
 
+async function completeAppointmentWithClinicalData(req, res) {
+    const { uuid } = req.params;
+    const { diagnosis, treatments } = await appointmentService.completeAppointmentWithClinicalData(uuid, req.body);
+    res.status(200).json({ diagnosis, treatments });
+}
+
 // ===== READ =====
 
 async function getAppointmentsController(req, res) {
-    const appointments = await appointmentService.getAppointments();
+    const appointments = await appointmentService.getAppointments(req.query);
     res.status(200).json(appointments);
 }
 
@@ -84,6 +89,7 @@ async function updateAppointmentStatusController(req, res) {
 
 module.exports = {
     createAppointmentController,
+    completeAppointmentWithClinicalData,
 
     getAppointmentsController,
     getFilteredAppointmentsController,

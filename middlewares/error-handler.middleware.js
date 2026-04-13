@@ -14,7 +14,7 @@ function errorMiddlware(err, req, res, next) {
             });
     } else {
         console.log(err.message)
-        return res.status(500).json({ message: 'Internal server error.' });
+        return res.status(500).json({ message: 'Ha ocurrido un error inesperado.' });
     }
 }
 

@@ -6,13 +6,18 @@ const { createTreatmentRules } = require('../validators/treatment.validators');
 const validateRequest = require('../../middlewares/request-validator.middleware');
 const asyncHandler = require('../../middlewares/async-handler.middleware');
 
-router.post('/', createTreatmentRules, validateRequest, asyncHandler(treatmentController.createTreatmentController));
+const requirePermission = require('../../middlewares/permissions.middleware'); 
+const {requireAuth} = require('../../middlewares/auth.middleware'); 
 
-router.get('/', asyncHandler(treatmentController.getTreatmentsController));
-router.get('/:uuid', asyncHandler(treatmentController.getTreatmentController));
-router.get('/:uuid/plain', asyncHandler(treatmentController.getTreatmentPlainController));
+router.use(requireAuth); 
 
-router.patch('/:uuid/clinical-status', asyncHandler(treatmentController.updateTreatmentClinicalStatusController));
-router.patch('/:uuid/status', asyncHandler(treatmentController.updateTreatmentStatusController));
+router.post('/', requirePermission("treatment:create"), createTreatmentRules, validateRequest, asyncHandler(treatmentController.createTreatmentController));
+
+router.get('/', requirePermission("treatment:read"), asyncHandler(treatmentController.getTreatmentsController));
+router.get('/:uuid', requirePermission("treatment:read"), asyncHandler(treatmentController.getTreatmentController));
+router.get('/:uuid/plain', requirePermission("treatment:read"), asyncHandler(treatmentController.getTreatmentPlainController));
+
+router.patch('/:uuid/clinical-status', requirePermission("treatment:update"), asyncHandler(treatmentController.updateTreatmentClinicalStatusController));
+router.patch('/:uuid/status', requirePermission("treatment:update"), asyncHandler(treatmentController.updateTreatmentStatusController));
 
 module.exports = router;

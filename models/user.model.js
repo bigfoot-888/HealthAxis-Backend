@@ -16,6 +16,12 @@ const User = sequelize.define(
             allowNull: false,
             unique: true,
         },
+        agendaId: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            references: { model: 'Agendas', key: 'id' },
+            onDelete: 'RESTRICT', 
+        },
         name: {
             type: DataTypes.STRING(50),
             allowNull: false,

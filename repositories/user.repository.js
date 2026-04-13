@@ -1,4 +1,4 @@
-const { User, Role, UserDashboard, DashboardComponent } = require('../models/index');
+const { User, Role, UserDashboard, DashboardComponent, Permission, Agenda } = require('../models/index');
 const { Op } = require('sequelize');
 const { escapeLike } = require('../utils/query-utils');
 
@@ -57,7 +57,7 @@ async function searchFiltered(query, limit = 20, options = {}) {
     const safeQuery = `%${escapeLike(query)}%`;
 
     return await User.findAll({
-        attributes: ['id', 'name', 'surname'],
+        attributes: ['id', 'name', 'surname', 'uuid'],
         where: {
             status: 'ACTIVE',
             [Op.or]: [{ name: { [Op.iLike]: safeQuery } }, { surname: { [Op.iLike]: safeQuery } }],
@@ -100,7 +100,7 @@ async function searchUsers({ name, limit = 20 }) {
 async function findByUuid(uuid, options = {}) {
     return await User.findOne({
         where: { uuid },
-        include: [{ model: Role, as: 'roles' }],
+        include: [{ model: Role, as: 'roles' }, {model: Agenda, as: "agenda"}],
         ...options,
     });
 }
@@ -125,6 +125,26 @@ async function findByIdPlain(id, options = {}) {
 
 async function findByEmail(email, options = {}) {
     return await User.findOne({ where: { email }, ...options });
+}
+
+async function findByIdWithRolesAndPermissions(id) {
+    return User.findByPk(id, {
+        include: [
+            {
+                model: Role,
+                as: 'roles',
+                through: { attributes: [] },
+                include: [
+                    {
+                        model: Permission,
+                        as: 'permissions',
+                        attributes: ['name'],
+                        through: { attributes: [] },
+                    },
+                ],
+            },
+        ],
+    });
 }
 
 // ===== UPDATE =====
@@ -166,6 +186,7 @@ module.exports = {
     findByIdPlain,
     findByEmail,
     searchUsers,
+    findByIdWithRolesAndPermissions,
 
     updateByUuid,
     updateStatusById,

@@ -1,4 +1,4 @@
-const { Diagnosis, User, Treatment, Patient } = require('../models/index');
+const { Diagnosis, User, Treatment, Patient, Appointment } = require('../models/index');
 const { Op, literal } = require('sequelize');
 const { escapeLike } = require('../utils/query-utils');
 
@@ -13,6 +13,22 @@ async function addUser(diagnosis, userId, throughData, options = {}) {
         through: throughData,
         ...options,
     });
+}
+
+async function associateUsers(diagnosis, users = [], options = {}) {
+    return await Promise.all(
+        users.map(({ userId, role, assignedAt }) => {
+            const throughData = {
+                role: role,
+                ...(assignedAt && { assignedAt: assignedAt }),
+            };
+
+            return diagnosis.addUser(userId, {
+                through: throughData,
+                ...options,
+            });
+        }),
+    );
 }
 
 // ===== READ =====
@@ -47,6 +63,7 @@ async function findByUuid(uuid, options = {}) {
             { model: Treatment, as: 'treatments' },
             { model: User, as: 'users' },
             { model: Patient, as: 'patient' },
+            { model: Appointment, as: 'appointment' },
         ],
         ...options,
     });
@@ -65,7 +82,7 @@ async function searchFiltered(query, limit = 20, options = {}) {
     const safeQuery = `%${escapeLike(query)}%`;
 
     return await Diagnosis.findAll({
-        attributes: ['id', 'name'],
+        attributes: ['id', 'name', 'uuid'],
         where: {
             [Op.or]: [
                 { name: { [Op.iLike]: safeQuery } },
@@ -151,6 +168,7 @@ async function updateRecordStatusByUuid(uuid, status, options = {}) {
 module.exports = {
     create,
     addUser,
+    associateUsers,
 
     findAll,
     findAllPlain,

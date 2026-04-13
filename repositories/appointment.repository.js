@@ -1,7 +1,7 @@
-const { Appointment, Agenda, User, Patient } = require('../models/index');
+const { Appointment, Treatment, Diagnosis, User, Patient } = require('../models/index');
 const { Op, literal } = require('sequelize');
 const { escapeLike } = require('../utils/query-utils');
-
+const { ACTIVE_APPOINTMENT_STATUSES } = require('../utils/global.utils');
 // ===== CREATE =====
 
 async function create(data, options = {}) {
@@ -13,7 +13,6 @@ async function create(data, options = {}) {
 async function findAll(options = {}) {
     return await Appointment.findAll({
         include: [
-            { model: Agenda, as: 'agenda' },
             {
                 model: User,
                 as: 'user',
@@ -31,13 +30,30 @@ async function findAll(options = {}) {
     });
 }
 
+async function hasActiveAppointmentsByUserId(userId, options = {}) {
+    const result = await Appointment.findOne({
+        where: {
+            userId,
+            status: ACTIVE_APPOINTMENT_STATUSES,
+        },
+        attributes: ['id'], 
+        ...options,
+    });
+
+    return result;
+}
+
 async function findByUuid(uuid, options = {}) {
     return await Appointment.findOne({
         where: { uuid },
         include: [
-            { model: Agenda, as: 'agenda' },
             { model: User, as: 'user' },
             { model: Patient, as: 'patient' },
+            {
+                model: Diagnosis,
+                as: 'diagnoses',
+                include: [{ model: Treatment, as: 'treatments' }],
+            },
         ],
         ...options,
     });
@@ -141,6 +157,7 @@ module.exports = {
     findByUuidPlain,
     searchFiltered,
     searchAppointments,
+    hasActiveAppointmentsByUserId,
 
     updateByUuid,
 };

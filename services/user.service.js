@@ -2,16 +2,17 @@ const { v4: uuidv4 } = require('uuid');
 const sequelize = require('../config/database');
 
 const UserRepository = require('../repositories/user.repository');
+const AppointmentRepository = require('../repositories/appointment.repository');
+const AgendaRepository = require('../repositories/agenda.repository');
 
-const { hashPassword, verifyPassword } = require('../utils/bcrypt');
+const { hashPassword, verifyPassword } = require('../utils/password.utils');
 
 const AppError = require('../errors/AppError');
 const AuthError = require('../errors/AuthError');
 const NotFoundError = require('../errors/NotFoundError');
 const ConflictError = require('../errors/ConflictError');
+const ValidationError = require('../errors/ValidationError');
 const { throwIfNotExists } = require('../utils/error-utils');
-
-const { createAuditLog } = require('../repositories/audit-log.repository');
 
 // ===== CREATE =====
 
@@ -89,7 +90,7 @@ async function createUser(userData, roles = [], userId = 1) {
                             aggregation: 'COUNT',
                             targetColumn: 'id',
                             groupBy: 'createdAt',
-                            timeGrain: 'month',
+                            timeGrain: 'week',
                         },
                     },
                 },
@@ -104,7 +105,7 @@ async function createUser(userData, roles = [], userId = 1) {
                             aggregation: 'COUNT',
                             targetColumn: 'id',
                             groupBy: 'startTime',
-                            timeGrain: 'month',
+                            timeGrain: 'week',
                         },
                     },
                 },
@@ -194,12 +195,20 @@ async function importUsers(users) {
 // ===== READ =====
 
 /**
- * Retrieves all users with roles.
+ * Retrieves users with optional filters.
  *
  * @returns {Promise<Array<Object>>}
  */
-async function getUsers() {
-    return await UserRepository.findAll();
+async function getUsers(query = {}) {
+    console.log("hola")
+    const { agendaUuid } = query;
+    const where = {};
+    if (agendaUuid) {
+        const agenda = await AgendaRepository.findByUuidPlain(agendaUuid);
+        throwIfNotExists(agenda, 'agenda', { agendaUuid });
+        where.agendaId = agenda.id;
+    }
+    return await UserRepository.findAll({where});
 }
 
 /**
@@ -302,19 +311,29 @@ async function updateUser(uuid, userData, newRoles = []) {
  * @throws {NotFoundError}
  */
 async function deactivateUser(uuid) {
-    const user = await UserRepository.findByUuidPlain(uuid);
+    return await sequelize.transaction(async (t) => {
+        const user = await UserRepository.findByUuidPlain(uuid, { transaction: t });
 
-    if (!user) {
-        throw new NotFoundError('Usuario no encontrado', { uuid });
-    }
+        if (!user) {
+            throw new NotFoundError('Usuario no encontrado', { uuid });
+        }
 
-    const [count] = await UserRepository.updateStatusById(user.id, 'INACTIVE');
+        const activeAppointments = await AppointmentRepository.hasActiveAppointmentsByUserId(user.id, { transaction: t });
 
-    if (count === 0) {
-        throw new NotFoundError('No se ha podido desactivar el usuario', { uuid });
-    }
+        if (activeAppointments) {
+            throw new ValidationError('No se puede dar de baja a un paciente con citas activas.', 400, {
+                activeAppointments,
+            });
+        }
 
-    return count;
+        const [count] = await UserRepository.updateStatusById(user.id, 'INACTIVE', { transaction: t });
+
+        if (count === 0) {
+            throw new NotFoundError('No se ha podido desactivar el usuario', { uuid });
+        }
+
+        return count;
+    });
 }
 
 /**
@@ -325,49 +344,29 @@ async function deactivateUser(uuid) {
  * @throws {NotFoundError}
  */
 async function reactivateUser(uuid) {
-    const user = await UserRepository.findByUuidPlain(uuid);
+    return await sequelize.transaction(async (t) => {
+        const user = await UserRepository.findByUuidPlain(uuid, { transaction: t });
 
-    if (!user) {
-        throw new NotFoundError('Usuario no encontrado', { uuid });
-    }
+        if (!user) {
+            throw new NotFoundError('Usuario no encontrado', { uuid });
+        }
 
-    const [count] = await UserRepository.updateStatusById(user.id, 'ACTIVE');
+        const [count] = await UserRepository.updateStatusById(user.id, 'ACTIVE', { transaction: t });
 
-    if (count === 0) {
-        throw new NotFoundError('No se ha podido reactivar el usuario', { uuid });
-    }
+        if (count === 0) {
+            throw new NotFoundError('No se ha podido reactivar el usuario', { uuid });
+        }
 
-    return count;
+        return count;
+    });
 }
 
-// ===== AUTH =====
+// ===== GUARDS =====
 
-/**
- * Validates user login credentials.
- *
- * Workflow:
- * - Finds user by email
- * - Verifies password
- *
- * @param {string} email
- * @param {string} password
- * @returns {Promise<Object>} Authenticated user
- * @throws {AuthError}
- */
-async function validateLogin(email, password) {
-    const user = await UserRepository.findByEmail(email);
-
-    if (!user) {
-        throw new AuthError('Usuario no encontrado', 401);
+function ensureUserIsActive(user) {
+    if (user.status !== 'ACTIVE') {
+        throw new ValidationError('El usuario está dado de baja.');
     }
-
-    const valid = await verifyPassword(password, user.password);
-
-    if (!valid) {
-        throw new AuthError('Credenciales incorrectas', 401);
-    }
-
-    return user;
 }
 
 module.exports = {
@@ -385,5 +384,5 @@ module.exports = {
     deactivateUser,
     reactivateUser,
 
-    validateLogin,
+    ensureUserIsActive,
 };

@@ -26,6 +26,11 @@ const Treatment = sequelize.define(
             allowNull: true,
             references: { model: 'Appointments', key: 'id' },
         },
+        diagnosisId: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+            references: { model: 'Diagnoses', key: 'id' },
+        },
         name: { type: DataTypes.STRING(100), allowNull: false },
         description: { type: DataTypes.TEXT, allowNull: true },
         notes: { type: DataTypes.TEXT, allowNull: true },

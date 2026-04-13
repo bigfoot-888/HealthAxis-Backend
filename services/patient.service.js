@@ -1,11 +1,14 @@
 const { v4: uuidv4 } = require('uuid');
 
 const PatientRepository = require('../repositories/patient.repository');
+const AppointmentRepository = require('../repositories/appointment.repository');
 const { PatientFlow } = require('../models/index');
 const sequelize = require('../config/database');
 
 const AppError = require('../errors/AppError');
 const NotFoundError = require('../errors/NotFoundError');
+const ValidationError = require('../errors/ValidationError'); 
+
 const { throwIfNotExists } = require('../utils/error-utils');
 const { createPrimaryFlowEvent } = require('../utils/flow-event');
 const { createAuditLog } = require('../repositories/audit-log.repository');
@@ -263,6 +266,16 @@ async function deactivatePatient(uuid) {
             throw new NotFoundError('Paciente no encontrado', { uuid });
         }
 
+        const activeAppointments = await AppointmentRepository.hasActiveAppointmentsByUserId(patient.id, {
+            transaction: t,
+        });
+
+        if (activeAppointments) {
+            throw new ValidationError('No se puede dar de baja a un usuario con citas activas.', 400, {
+                activeAppointments,
+            });
+        }
+
         const [count] = await PatientRepository.updateStatusById(patient.id, 'INACTIVE', { transaction: t });
 
         if (count === 0) {
@@ -290,6 +303,7 @@ async function deactivatePatient(uuid) {
 async function reactivatePatient(uuid) {
     return await sequelize.transaction(async (t) => {
         const patient = await PatientRepository.findByUuidPlain(uuid, { transaction: t });
+
         if (!patient) {
             throw new NotFoundError('Paciente no encontrado', { uuid });
         }
@@ -329,6 +343,14 @@ async function updatePatient(uuid, patientData) {
     return count;
 }
 
+// ===== GUARDS =====
+
+function ensurePatientIsActive(patient) {
+    if (patient.status !== 'ACTIVE') {
+        throw new ValidationError('El paciente está dado de baja.');
+    }
+}
+
 module.exports = {
     createPatient,
     importPatients,
@@ -342,4 +364,6 @@ module.exports = {
     deactivatePatient,
     reactivatePatient,
     updatePatient,
+
+    ensurePatientIsActive,
 };

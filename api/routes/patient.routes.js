@@ -5,19 +5,24 @@ const patientController = require('../controllers/patient.controller');
 const asyncHandler = require('../../middlewares/async-handler.middleware');
 const { validateUuidParam } = require('../../middlewares/valid-uuid.middleware');
 
-router.post('/', asyncHandler(patientController.createPatientController));
-router.post('/import', asyncHandler(patientController.importPatientsController));
+const requirePermission = require('../../middlewares/permissions.middleware'); 
+const {requireAuth} = require('../../middlewares/auth.middleware'); 
 
-router.get('/', asyncHandler(patientController.getPatientsController));
-router.get('/filtered', asyncHandler(patientController.getFilteredPatientsController));
+router.use(requireAuth); 
 
-router.get('/:uuid/flow', validateUuidParam('uuid'), asyncHandler(patientController.getPatientFlowController));
-router.get('/:uuid/detail', validateUuidParam('uuid'), asyncHandler(patientController.getPatientDetailController));
-router.get('/:uuid', validateUuidParam('uuid'), asyncHandler(patientController.getPatientController));
+router.post('/', requirePermission("patient:create"), asyncHandler(patientController.createPatientController));
+router.post('/import', requirePermission("patient:create"), asyncHandler(patientController.importPatientsController));
 
-router.put('/:uuid', validateUuidParam('uuid'), asyncHandler(patientController.updatePatientController));
+router.get('/', requirePermission("patient:read"), asyncHandler(patientController.getPatientsController));
+router.get('/filtered', requirePermission("patient:read"), asyncHandler(patientController.getFilteredPatientsController));
 
-router.patch('/:uuid/deactivate', validateUuidParam('uuid'), asyncHandler(patientController.deactivatePatientController));
-router.patch('/:uuid/reactivate', validateUuidParam('uuid'), asyncHandler(patientController.reactivatePatientController));
+router.get('/:uuid/flow', requirePermission("patient:read"), validateUuidParam('uuid'), asyncHandler(patientController.getPatientFlowController));
+router.get('/:uuid/detail', requirePermission("patient:read"), validateUuidParam('uuid'), asyncHandler(patientController.getPatientDetailController));
+router.get('/:uuid', requirePermission("patient:read"), validateUuidParam('uuid'), asyncHandler(patientController.getPatientController));
+
+router.put('/:uuid', requirePermission("patient:update"), validateUuidParam('uuid'), asyncHandler(patientController.updatePatientController));
+
+router.patch('/:uuid/deactivate', requirePermission("patient:update"), validateUuidParam('uuid'), asyncHandler(patientController.deactivatePatientController));
+router.patch('/:uuid/reactivate', requirePermission("patient:delete"), validateUuidParam('uuid'), asyncHandler(patientController.reactivatePatientController));
 
 module.exports = router;

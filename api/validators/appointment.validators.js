@@ -57,20 +57,6 @@ const createAppointmentRules = [
     //         }
     //         return true;
     //     }),
-    check('agenda')
-        .notEmpty()
-        .withMessage('La agenda es obligatoria')
-        .custom(async (value) => {
-            try {
-                await agendaService.getAgendaById(value.id);
-                return true;
-            } catch (error) {
-                if (error instanceof NotFoundError) {
-                    throw new ValidationError('La agenda especificada no existe', { agenda: value });
-                }
-                throw error;
-            }
-        }),
     check('user')
         .notEmpty()
         .withMessage('El usuario es obligatorio')

@@ -2,6 +2,8 @@ const { v4: uuidv4 } = require('uuid');
 const sequelize = require('../config/database');
 
 const DiagnosisRepository = require('../repositories/diagnosis.repository');
+const AppointmentRepository = require('../repositories/appointment.repository')
+const PatientRepository = require('../repositories/patient.repository');
 
 const NotFoundError = require('../errors/NotFoundError');
 const { throwIfNotExists } = require('../utils/error-utils');
@@ -32,11 +34,9 @@ async function createDiagnosis(diagnosisData, users = []) {
             { transaction: t },
         );
 
-        await Promise.all(
-            users.map(({ userId, role }) =>
-                DiagnosisRepository.addUser(diagnosis, userId, { role }, { transaction: t }),
-            ),
-        );
+        if (users.length > 0) {
+            await DiagnosisRepository.associateUsers(diagnosis, users, { transaction: t });
+        }
 
         await createPrimaryFlowEvent({
             patientId: diagnosis.patientId,
@@ -52,12 +52,30 @@ async function createDiagnosis(diagnosisData, users = []) {
 // ===== READ =====
 
 /**
- * Retrieves all diagnoses with associations.
+ * Retrieves all diagnoses with optional filters.
  *
+ * @param {Object} query
+ * @param {string} [query.patientUuid]
  * @returns {Promise<Array<Object>>}
  */
-async function getDiagnoses() {
-    return await DiagnosisRepository.findAll();
+async function getDiagnoses(query = {}) {
+    const { patientUuid, appointmentUuid } = query;
+    const where = {};
+
+    if (patientUuid) {
+        const patient = await PatientRepository.findByUuidPlain(patientUuid);
+        throwIfNotExists(patient, 'paciente', { patientUuid });
+        where.patientId = patient.id;
+    }
+    if (appointmentUuid) {
+        const appointment = await AppointmentRepository.findByUuidPlain(appointmentUuid);
+        throwIfNotExists(appointment, 'cita', { appointmentUuid });
+        where.appointmentId = appointment.id;
+    }
+
+    console.log(where)
+
+    return await DiagnosisRepository.findAll({ where });
 }
 
 /**

@@ -16,12 +16,6 @@ const Appointment = sequelize.define(
             allowNull: false,
             unique: true 
         },
-        agendaId: {
-            type: DataTypes.INTEGER,
-            allowNull: false,
-            references: { model: 'Agendas', key: 'id' },
-            onDelete: 'RESTRICT', 
-        },
         userId: {
             type: DataTypes.INTEGER,
             allowNull: false, 

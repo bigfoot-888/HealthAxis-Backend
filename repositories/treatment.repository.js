@@ -8,6 +8,10 @@ async function create(treatmentData, options = {}) {
     return await Treatment.create({ ...treatmentData }, options);
 }
 
+async function bulkCreate(treatments, options = {}) {
+    return await Treatment.bulkCreate(treatments, options);
+}
+
 async function associateUsers(treatment, users = [], options = {}) {
     return await Promise.all(
         users.map(({ user }) => {
@@ -24,13 +28,9 @@ async function associateUsers(treatment, users = [], options = {}) {
     );
 }
 
-async function associateDiagnoses(treatment, diagnoses = [], options = {}) {
-    return await Promise.all(diagnoses.map(({ diagnosis }) => treatment.addDiagnosis(diagnosis.id, options)));
-}
-
 // ===== READ =====
 
-async function findAllDetailed(options = {}) {
+async function findAll(options = {}) {
     return await Treatment.findAll({
         include: [
             {
@@ -38,7 +38,7 @@ async function findAllDetailed(options = {}) {
                 as: 'users',
                 attributes: ['id', [literal(`"users"."name" || ' ' || "users"."surname"`), 'fullName']],
             },
-            { model: Diagnosis, as: 'diagnoses' },
+            { model: Diagnosis, as: 'diagnosis' },
             {
                 model: Patient,
                 as: 'patient',
@@ -60,7 +60,7 @@ async function findByUuidDetailed(uuid, options = {}) {
     return await Treatment.findOne({
         where: { uuid },
         include: [
-            { model: Diagnosis, as: 'diagnoses' },
+            { model: Diagnosis, as: 'diagnosis' },
             { model: User, as: 'users' },
             { model: Patient, as: 'patient' },
         ],
@@ -152,9 +152,9 @@ async function updateStatus(uuid, newStatus, options = {}) {
 
 module.exports = {
     create,
+    bulkCreate,
     associateUsers,
-    associateDiagnoses,
-    findAllDetailed,
+    findAll,
     findByUuidPlain,
     findByUuidDetailed,
     searchFiltered,

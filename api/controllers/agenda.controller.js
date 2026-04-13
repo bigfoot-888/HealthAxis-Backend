@@ -12,20 +12,17 @@ async function createAgendaController(req, res) {
 
 async function createAgendaPeriodController(req, res) {
     const agendaUuid = req.params.uuid;
-    const agenda = await agendaService.getAgenda(agendaUuid);
     const { openingDate, closingDate } = req.body;
     const periodData = {
         openingDate,
         closingDate,
-        agendaId: agenda.id,
     };
-    const newPeriod = await agendaService.createAgendaPeriod(periodData);
+    const newPeriod = await agendaService.createAgendaPeriod(agendaUuid, periodData);
     res.status(201).json(newPeriod);
 }
 
 async function getAgendasController(req, res) {
     const agendas = await agendaService.getAgendas();
-    console.log('TERMINE DE MIRAR AGENAS');
     res.status(201).json(agendas);
 }
 

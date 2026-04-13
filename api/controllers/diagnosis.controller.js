@@ -10,12 +10,12 @@ async function createDiagnosisController(req, res) {
         appointmentId: appointment?.id,
         patientId: patient?.id,
     };
-
+    console.log(users)
     const mappedUsers = users.map((p) => ({
         userId: p.user.id,
         role: p.role,
     }));
-
+    console.log(mappedUsers)
     const diagnosis = await diagnosisService.createDiagnosis(payload, mappedUsers);
     res.status(201).json(diagnosis);
 }
@@ -23,7 +23,7 @@ async function createDiagnosisController(req, res) {
 // ===== READ =====
 
 async function getDiagnosesController(req, res) {
-    const diagnoses = await diagnosisService.getDiagnoses();
+    const diagnoses = await diagnosisService.getDiagnoses(req.query);
     res.status(200).json(diagnoses);
 }
 

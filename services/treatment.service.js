@@ -1,5 +1,8 @@
 const sequelize = require('../config/database');
 const TreatmentRepository = require('../repositories/treatment.repository');
+const PatientRepository = require('../repositories/patient.repository');
+const DiagnosisRepository = require('../repositories/diagnosis.repository');
+const AppointmentRepository = require('../repositories/appointment.repository');
 const NotFoundError = require('../errors/NotFoundError');
 const { throwIfNotExists } = require('../utils/error-utils');
 
@@ -14,7 +17,6 @@ const { throwIfNotExists } = require('../utils/error-utils');
  *
  * @param {Object} treatmentData - Core treatment data (name, duration, patientId, etc.)
  * @param {Array<{user: {id: number, role: string, assignedAt?: Date}}>} [users=[]] - Users to associate
- * @param {Array<{diagnosis: {id: number}}>} [diagnoses=[]] - Diagnoses to associate
  * @returns {Promise<Object>} Fully populated Treatment instance
  */
 async function createTreatment(treatmentData, users = [], diagnoses = []) {
@@ -25,21 +27,39 @@ async function createTreatment(treatmentData, users = [], diagnoses = []) {
             await TreatmentRepository.associateUsers(treatment, users, { transaction: t });
         }
 
-        if (diagnoses.length > 0) {
-            await TreatmentRepository.associateDiagnoses(treatment, diagnoses, { transaction: t });
-        }
-
         return await TreatmentRepository.findByUuidDetailed(treatment.uuid, { transaction: t });
     });
 }
 
 /**
- * Retrieves all treatments with full associations (users, diagnoses, patient).
+ * Retrieves treatments with optional filters.
  *
- * @returns {Promise<Array<Object>>} List of treatments with relations
+ * @param {Object} query
+ * @param {string} [query.patientUuid]
+ * @returns {Promise<Array<Object>>}
  */
-async function getTreatments() {
-    return await TreatmentRepository.findAllDetailed();
+async function getTreatments(query = {}) {
+    const { patientUuid, appointmentUuid, diagnosisUuid } = query;
+
+    const where = {};
+
+    if (patientUuid) {
+        const patient = await PatientRepository.findByUuidPlain(patientUuid);
+        throwIfNotExists(patient, 'paciente', { patientUuid });
+        where.patientId = patient.id;
+    }
+    if (appointmentUuid) {
+        const appointment = await AppointmentRepository.findByUuidPlain(appointmentUuid);
+        throwIfNotExists(appointment, 'cita', { appointmentUuid });
+        where.appointmentId = appointment.id;
+    }
+    if (diagnosisUuid) {
+        const diagnosis = await DiagnosisRepository.findByUuidPlain(diagnosisUuid);
+        throwIfNotExists(diagnosis, 'diagnóstico', { diagnosisUuid });
+        where.diagnosisId = diagnosis.id;
+    }
+
+    return await TreatmentRepository.findAll({ where });
 }
 
 /**

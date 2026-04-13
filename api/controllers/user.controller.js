@@ -3,7 +3,7 @@ const userService = require('../../services/user.service');
 // ===== CREATE =====
 
 async function createUserController(req, res) {
-    const { name, surname, email, password, roles, phone } = req.body;
+    const { name, surname, email, password, roles, phone, agenda } = req.body;
 
     const userData = {
         name,
@@ -11,6 +11,7 @@ async function createUserController(req, res) {
         email,
         password,
         phone,
+        agendaId: agenda?.id,
     };
 
     const newUser = await userService.createUser(userData, roles);
@@ -26,7 +27,7 @@ async function importUsersController(req, res) {
 // ===== READ =====
 
 async function getUsersController(req, res) {
-    const users = await userService.getUsers();
+    const users = await userService.getUsers(req.query);
     res.status(200).json(users);
 }
 
@@ -46,7 +47,8 @@ async function getUserController(req, res) {
 }
 
 async function getProfile(req, res) {
-    const userId = req.session.userID;
+    console.log(req.session)
+    const userId = req.session.user.id;
 
     if (!userId) {
         throw new Error('El usuario no existe.');
@@ -89,33 +91,6 @@ async function reactivateUserController(req, res) {
     res.status(200).json({ updated: count });
 }
 
-// ===== AUTH =====
-
-async function validateLogin(req, res) {
-    const { email, password } = req.body;
-
-    const user = await userService.validateLogin(email, password);
-
-    req.session.fullName = `${user.name} ${user.surname}`;
-    req.session.userID = user.id;
-
-    res.status(200).json(user);
-}
-
-async function logout(req, res) {
-    const userId = req.session.userID;
-
-    req.session.destroy();
-    res.status(200).json({ id: userId });
-}
-
-async function checkSession(req, res) {
-    if (req.session.userID) {
-        return res.status(200).json(req.session.userID);
-    }
-    return res.sendStatus(401);
-}
-
 module.exports = {
     createUserController,
     importUsersController,
@@ -128,8 +103,4 @@ module.exports = {
     updateUserController,
     deactivateUserController,
     reactivateUserController,
-
-    validateLogin,
-    logout,
-    checkSession,
 };

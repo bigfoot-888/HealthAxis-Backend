@@ -9,22 +9,28 @@ const { updateAgendaRules, createAgendaRules } = require('../validators/agenda.v
 const { updateAgendaPeriodRules, createAgendaPeriodRules } = require('../validators/agenda-period.validators');
 const validateRequest = require('../../middlewares/request-validator.middleware');
 
-router.post('/', createAgendaRules, validateRequest, asyncHandler(agendaController.createAgendaController));
+const requirePermission = require('../../middlewares/permissions.middleware'); 
+const {requireAuth} = require('../../middlewares/auth.middleware'); 
 
-router.get('/', asyncHandler(agendaController.getAgendasController));
-router.get('/filtered', asyncHandler(agendaController.getFilteredAgendasController));
-router.get('/:uuid', validateUuidParam('uuid'), asyncHandler(agendaController.getAgendaController));
+router.use(requireAuth); 
+
+router.post('/', requirePermission("agenda:create"), createAgendaRules, validateRequest, asyncHandler(agendaController.createAgendaController));
+
+router.get('/', requirePermission("agenda:read"), asyncHandler(agendaController.getAgendasController));
+router.get('/filtered', requirePermission("agenda:read"), asyncHandler(agendaController.getFilteredAgendasController));
+router.get('/:uuid', requirePermission("agenda:read"), validateUuidParam('uuid'), asyncHandler(agendaController.getAgendaController));
 
 router.put(
     '/:uuid',
+    requirePermission("agenda:update"), 
     validateUuidParam('uuid'),
     updateAgendaRules,
     validateRequest,
     asyncHandler(agendaController.updateAgendaController),
 );
 
-router.patch('/:uuid/deactivate', validateUuidParam('uuid'), asyncHandler(agendaController.deactivateAgendaController));
-router.patch('/:uuid/reactivate', validateUuidParam('uuid'), asyncHandler(agendaController.reactivateAgendaController));
+router.patch('/:uuid/deactivate', requirePermission("agenda:delete"), validateUuidParam('uuid'), asyncHandler(agendaController.deactivateAgendaController));
+router.patch('/:uuid/reactivate', requirePermission("agenda:update"), validateUuidParam('uuid'), asyncHandler(agendaController.reactivateAgendaController));
 
 // Agenda Period routes
 

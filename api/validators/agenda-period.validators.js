@@ -2,7 +2,7 @@ const { check } = require('express-validator');
 const ValidationError = require('../../errors/ValidationError');
 
 const createAgendaPeriodRules = [
-    check('opening_date')
+    check('openingDate')
         .notEmpty()
         .withMessage('La fecha de apertura es obligatoria')
         .custom((value) => {
@@ -16,19 +16,19 @@ const createAgendaPeriodRules = [
             if (openingDate < today) {
                 throw new ValidationError(
                     'La fecha de apertura no puede ser anterior a hoy',
-                    { opening_date: value },
+                    { openingDate: value },
                 );
             }
 
             return true;
         }),
 
-    check('closing_date')
+    check('closingDate')
         .notEmpty()
         .withMessage('La fecha de cierre es obligatoria')
         .custom((value, { req }) => {
             const closingDate = new Date(value);
-            const openingDate = new Date(req.body.opening_date);
+            const openingDate = new Date(req.body.openingDate);
 
             closingDate.setHours(0, 0, 0, 0);
             openingDate.setHours(0, 0, 0, 0);
@@ -37,8 +37,8 @@ const createAgendaPeriodRules = [
                 throw new ValidationError(
                     'La fecha de cierre no puede ser anterior a la fecha de apertura',
                     {
-                        closing_date: value,
-                        opening_date: req.body.opening_date,
+                        closingDate: value,
+                        openingDate: req.body.openingDate,
                     },
                 );
             }
@@ -47,12 +47,12 @@ const createAgendaPeriodRules = [
 ];
 
 const updateAgendaPeriodRules = [
-    check('closing_date')
+    check('closingDate')
         .notEmpty()
         .withMessage('La fecha de cierre es obligatoria')
         .custom((value, { req }) => {
             const closingDate = new Date(value);
-            const openingDate = new Date(req.body.opening_date);
+            const openingDate = new Date(req.body.openingDate);
             const today = new Date();
 
             today.setHours(0, 0, 0, 0); 
@@ -63,15 +63,15 @@ const updateAgendaPeriodRules = [
                 throw new ValidationError(
                     'La fecha de cierre no puede ser anterior a la fecha de apertura',
                     {
-                        closing_date: value,
-                        opening_date: req.body.opening_date,
+                        closingDate: value,
+                        openingDate: req.body.openingDate,
                     },
                 );
             }
             else if (closingDate < today) {
                 throw new ValidationError(
                     'La fecha de cierre no puede ser anterior a hoy',
-                    { closing_date: value },
+                    { closingDate: value },
                 );
             }
             return true;

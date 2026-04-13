@@ -3,6 +3,7 @@ const { Appointment } = require('./appointment.model');
 const { User } = require('./user.model');
 const { Patient } = require('./patient.model');
 const { Role, UserRole } = require('./role.model');
+const { Permission, RolePermission } = require('./permission.model')
 const {
     ClinicalDocument,
     ClinicalAttachment,
@@ -17,7 +18,9 @@ const { PatientFlow, FlowEvent, FlowEdge } = require('./patient-flow.model');
 const { UserDashboard, DashboardComponent } = require('./dashboard.model');
 const { AuditLog } = require('./audit-log.model');
 
-const associate = () => {
+
+
+const associate = async () => {
     // ===== Agenda associations =====
     Agenda.hasMany(AgendaPeriod, {
         foreignKey: 'agendaId',
@@ -36,12 +39,12 @@ const associate = () => {
         targetKey: 'id', 
         as: 'agenda', 
     });
-    Agenda.hasMany(Appointment, {
+    Agenda.hasMany(User, {
         foreignKey: 'agendaId',
         sourceKey: 'id',
-        as: 'appointments', 
+        as: 'users', 
     });
-    Appointment.belongsTo(Agenda, {
+    User.belongsTo(Agenda, {
         foreignKey: 'agendaId',
         targetKey: 'id',
         as: 'agenda',
@@ -74,6 +77,24 @@ const associate = () => {
         as: 'users',
         foreignKey: 'roleId',
         otherKey: 'userId', 
+        sourceKey: 'id', 
+        targetKey: 'id', 
+    });
+
+    Role.belongsToMany(Permission, {
+        through: RolePermission,
+        as: 'permissions',
+        foreignKey: 'roleId',
+        otherKey: 'permissionId', 
+        sourceKey: 'id', 
+        targetKey: 'id', 
+    });
+
+    Permission.belongsToMany(Role, {
+        through: RolePermission,
+        as: "roles",
+        foreignKey: 'permissionId',
+        otherKey: 'roleId', 
         sourceKey: 'id', 
         targetKey: 'id', 
     });
@@ -181,22 +202,8 @@ const associate = () => {
         targetKey: 'id', 
     });
 
-    Treatment.belongsToMany(Diagnosis, {
-        through: DiagnosisTreatment,
-        as: 'diagnoses',
-        foreignKey: 'treatmentId',
-        otherKey: 'diagnosisId',
-        sourceKey: 'id', 
-        targetKey: 'id', 
-    });
-    Diagnosis.belongsToMany(Treatment, {
-        through: DiagnosisTreatment,
-        as: 'treatments',
-        foreignKey: 'diagnosisId',
-        otherKey: 'treatmentId',
-        sourceKey: 'id', 
-        targetKey: 'id', 
-    });
+    Diagnosis.hasMany(Treatment, { foreignKey: 'diagnosisId', sourceKey: 'id', as: 'treatments' }); 
+    Treatment.belongsTo(Diagnosis, { foreignKey: 'diagnosisId', targetKey: 'id', as: 'diagnosis' }); 
 
     // ===== Patient associations =====
     Patient.hasMany(Diagnosis, { foreignKey: 'patientId', sourceKey: 'id', as: 'diagnoses' });  
@@ -260,4 +267,8 @@ module.exports = {
     UserDashboard,
     DashboardComponent,
     AuditLog,
+    Permission,
+    RolePermission,
+    DiagnosisTreatment,
+    associate,
 };
