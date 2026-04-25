@@ -3,7 +3,7 @@ const patientService = require('../../services/patient.service');
 // ===== CREATE =====
 
 async function createPatientController(req, res) {
-    const { name, surname, email, sex, phone, addressLine1, addressLine2, dni, dateOfBirth, nhc } = req.body;
+    const { name, surname, email, sex, phone, addressLine1, addressLine2, dni, dateOfBirth } = req.body;
 
     const patientData = {
         name,
@@ -15,9 +15,7 @@ async function createPatientController(req, res) {
         addressLine2,
         dni,
         dateOfBirth,
-        nhc,
     };
-
     const newPatient = await patientService.createPatient(patientData);
     res.status(201).json(newPatient);
 }
@@ -28,11 +26,23 @@ async function importPatientsController(req, res) {
     res.status(201).json(importedPatients);
 }
 
+async function createSecondaryNodeController(req, res) {
+    const { parentEventId, clinicalDocumentId } = req.body;
+    const newNode = await patientService.createSecondaryNode(parentEventId, clinicalDocumentId, req.user.id);
+    res.status(201).json(newNode);
+}
+
 // ===== READ =====
 
 async function getPatientsController(req, res) {
     const patients = await patientService.getPatients();
     res.status(200).json(patients);
+}
+
+async function getPatientHistoryController(req, res) {
+    const { uuid } = req.params;
+    const patientHistory = await patientService.getPatientHistory(uuid);
+    res.status(200).json(patientHistory);
 }
 
 async function getFilteredPatientsController(req, res) {
@@ -92,6 +102,12 @@ async function reactivatePatientController(req, res) {
     res.status(200).json({ updated: count });
 }
 
+async function deleteFlowEventController(req, res) {
+    const {id} = req.params; 
+    const count = await patientService.deleteFlowEvent(id); 
+    res.status(200).json({deleted: count})
+}
+
 module.exports = {
     createPatientController,
     importPatientsController,
@@ -103,4 +119,7 @@ module.exports = {
     updatePatientController,
     deactivatePatientController,
     reactivatePatientController,
+    deleteFlowEventController,
+    createSecondaryNodeController,
+    getPatientHistoryController,
 };

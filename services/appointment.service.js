@@ -6,6 +6,7 @@ const UserRepository = require('../repositories/user.repository');
 const PatientRepository = require('../repositories/patient.repository');
 const DiagnosisRepository = require('../repositories/diagnosis.repository');
 const TreatmentRepository = require('../repositories/treatment.repository');
+const AuditLogRepository = require('../repositories/audit-log.repository')
 
 const { ensurePatientIsActive } = require('../services/patient.service');
 const { ensureUserIsActive } = require('../services/user.service');
@@ -15,6 +16,7 @@ const NotFoundError = require('../errors/NotFoundError');
 const ConflictError = require('../errors/ConflictError');
 
 const { createPrimaryFlowEvent } = require('../utils/flow-event');
+const { getChanges } = require('../utils/log.utils');
 
 // ===== CREATE =====
 
@@ -27,15 +29,16 @@ const { createPrimaryFlowEvent } = require('../utils/flow-event');
  * - Creates flow event linked to the patient
  *
  * @param {Object} appointmentData - Appointment data
+ * @param {string} userId - The ID of the user that's logged in 
  * @returns {Promise<Object>} Created appointment
  */
-async function createAppointment(appointmentData) {
+async function createAppointment(appointmentData, userId) {
     return await sequelize.transaction(async (t) => {
-        const patient = await PatientRepository.findByIdPlain(appointmentData.patientId);
+        const patient = await PatientRepository.findByIdPlain(appointmentData.patientId, {transaction: t});
         throwIfNotExists(patient, 'paciente', { patientId: appointmentData.patientId });
         ensurePatientIsActive(patient);
 
-        const user = await UserRepository.findById(appointmentData.userId);
+        const user = await UserRepository.findById(appointmentData.userId, {transaction: t});
         throwIfNotExists(user, 'usuario', { userId: appointmentData.userId });
         ensureUserIsActive(user);
 
@@ -48,10 +51,25 @@ async function createAppointment(appointmentData) {
             { transaction: t },
         );
 
+        // Create flow event
         await createPrimaryFlowEvent({
             patientId: appointment.patientId,
             type: 'APPOINTMENT',
             title: 'Cita registrada en el sistema',
+            entityId: appointment.id,
+            transaction: t,
+        });
+
+        await AuditLogRepository.createAuditLog({
+            action: 'CREATED',
+            entityType: 'APPOINTMENT',
+            entityId: appointment.id,
+            userId: userId,
+            patientId: appointment.patientId,
+            meta: {
+                date: appointment.startDate,
+                agendaId: user.agendaId,
+            },
             transaction: t,
         });
 
@@ -200,16 +218,37 @@ async function searchAppointments({ patient, practitioner }) {
  *
  * @param {string} uuid
  * @param {Object} appointmentData
+ * @param {string} userId
  * @returns {Promise<number>} Number of affected rows
  */
-async function updateAppointment(uuid, appointmentData) {
-    const [count] = await AppointmentRepository.updateByUuid(uuid, appointmentData);
+async function updateAppointment(uuid, appointmentData, userId) {
+    return await sequelize.transaction(async (t) => {
+        const appointment = await AppointmentRepository.findByUuidPlain(uuid, {transaction: t});
+        throwIfNotExists(appointment, 'cita', { uuid });
+        const changes = getChanges(appointment, appointmentData, {
+            ignoreFields: ['updatedAt'],
+        });
 
-    if (count === 0) {
-        throw new NotFoundError('Error, cita no encontrada', { uuid });
-    }
+        const [count] = await AppointmentRepository.updateByUuid(uuid, appointmentData, {transaction: t});
 
-    return count;
+        if (count === 0) {
+            throw new NotFoundError('Error, cita no encontrada', { uuid });
+        }
+
+        if (Object.keys(changes).length > 0) {
+            await AuditLogRepository.createAuditLog({
+                action: 'UPDATED',
+                entityType: 'APPOINTMENT',
+                entityId: appointment.id,
+                userId: userId,
+                patientId: appointment.patientId,
+                meta: { changes },
+                transaction: t,
+            });
+        }
+
+        return count;
+    })
 }
 
 /**
@@ -217,16 +256,64 @@ async function updateAppointment(uuid, appointmentData) {
  *
  * @param {string} uuid
  * @param {{status: string, notes?: string}} payload
+ * @param {string} userId
  * @returns {Promise<number>} Number of affected rows
  */
-async function updateAppointmentStatus(uuid, payload) {
-    const [count] = await AppointmentRepository.updateByUuid(uuid, payload);
+async function updateAppointmentStatus(uuid, payload, userId) {
+    return await sequelize.transaction(async (t) => {
+        const appointment = await AppointmentRepository.findByUuidPlain(uuid, {transaction: t});
+        throwIfNotExists(appointment, 'cita', { uuid });
 
-    if (count === 0) {
-        throw new NotFoundError('Error, cita no encontrada', { uuid });
-    }
+        const previousStatus = appointment.status;
 
-    return count;
+        const [count] = await AppointmentRepository.updateByUuid(uuid, payload, {transaction: t});
+
+        if (count === 0) {
+            throw new NotFoundError('Error, cita no encontrada', { uuid });
+        }
+
+        if (payload.status !== previousStatus) {
+            await AuditLogRepository.createAuditLog({
+                action: 'STATUS_CHANGED',
+                entityType: 'APPOINTMENT',
+                entityId: appointment.id,
+                userId,
+                patientId: appointment.patientId,
+                meta: {
+                    previousStatus,
+                    newStatus: payload.status,
+                },
+                transaction: t,
+            });
+        }
+
+        const relevantStatuses = ['COMPLETED', 'CANCELLED', 'NO_SHOW'];
+
+        if (payload.status !== previousStatus && relevantStatuses.includes(payload.status)) {
+            let title = '';
+
+            switch (payload.status) {
+                case 'COMPLETED':
+                    title = 'Cita completada';
+                    break;
+                case 'CANCELLED':
+                    title = 'Cita cancelada';
+                    break;
+                case 'NO_SHOW':
+                    title = 'Paciente no se presentó a la cita';
+                    break;
+            }
+
+            await createPrimaryFlowEvent({
+                patientId: appointment.patientId,
+                type: 'APPOINTMENT',
+                title,
+                entityId: appointment.id,
+                transaction: t,
+            });
+        }
+        return count;
+    });
 }
 
 module.exports = {

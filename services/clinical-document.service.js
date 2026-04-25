@@ -118,20 +118,20 @@ async function getFilteredClinicalDocuments(query, limit = 20) {
 }
 
 /**
- * Retrieves a clinical attachment file by UUID.
+ * Retrieves a clinical attachment file by ID.
  *
  * Workflow:
  * - Fetches attachment metadata
  * - Retrieves file from storage
  *
- * @param {string} uuid - Attachment UUID
+ * @param {number} id - Attachment ID
  * @returns {Promise<{fileBuffer: Buffer, mimeType: string, fileName: string}>}
  * @throws {NotFoundError}
  */
-async function getClinicalAttachment(uuid) {
-    const attachment = await ClinicalDocumentRepository.findAttachmentByUuid(uuid);
+async function getClinicalAttachment(id) {
+    const attachment = await ClinicalDocumentRepository.findAttachmentById(id);
 
-    const resolved = throwIfNotExists(attachment, 'archivo', { uuid });
+    const resolved = throwIfNotExists(attachment, 'archivo', { id });
 
     const fileBuffer = await getFileFromStorage(`${resolved.storageKey}.${resolved.fileName}`);
 
@@ -165,16 +165,16 @@ async function updateClinicalDocumentStatus(uuid, status) {
 /**
  * Updates the system status of a clinical attachment.
  *
- * @param {string} uuid
+ * @param {number} id
  * @param {string} status
  * @returns {Promise<number>} Number of affected rows
  * @throws {NotFoundError}
  */
-async function updateClinicalAttachmentStatus(uuid, status) {
-    const [count] = await ClinicalDocumentRepository.updateAttachmentStatusByUuid(uuid, status);
+async function updateClinicalAttachmentStatus(id, status) {
+    const [count] = await ClinicalDocumentRepository.updateAttachmentStatusById(id, status);
 
     if (count === 0) {
-        throw new NotFoundError('No se ha podido actualizar el archivo', { uuid });
+        throw new NotFoundError('No se ha podido actualizar el archivo', { id });
     }
 
     return count;

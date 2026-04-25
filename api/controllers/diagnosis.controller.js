@@ -10,13 +10,15 @@ async function createDiagnosisController(req, res) {
         appointmentId: appointment?.id,
         patientId: patient?.id,
     };
-    console.log(users)
-    const mappedUsers = users.map((p) => ({
-        userId: p.user.id,
-        role: p.role,
-    }));
-    console.log(mappedUsers)
-    const diagnosis = await diagnosisService.createDiagnosis(payload, mappedUsers);
+
+    const mappedUsers = users.map((p) => {
+        if (!p.user.id) {
+            throw new ValidationError('Usuario inválido en participantes');
+        }
+        return { userId: p.user.id, role: p.role };
+    });
+
+    const diagnosis = await diagnosisService.createDiagnosis(payload, mappedUsers, req.user.id);
     res.status(201).json(diagnosis);
 }
 
@@ -55,7 +57,7 @@ async function updateDiagnosisClinicalStatusController(req, res) {
     const { uuid } = req.params;
     const { clinicalStatus } = req.body;
 
-    const updated = await diagnosisService.updateDiagnosisClinicalStatus(uuid, clinicalStatus);
+    const updated = await diagnosisService.updateDiagnosisClinicalStatus(uuid, clinicalStatus, req.user.id);
     res.status(200).json({ updated });
 }
 
@@ -63,7 +65,7 @@ async function updateDiagnosisRecordStatusController(req, res) {
     const { uuid } = req.params;
     const { status } = req.body;
 
-    const updated = await diagnosisService.updateDiagnosisRecordStatus(uuid, status);
+    const updated = await diagnosisService.updateDiagnosisRecordStatus(uuid, status, req.user.id);
     res.status(200).json({ updated });
 }
 

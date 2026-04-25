@@ -5,6 +5,7 @@ const { escapeLike } = require('../utils/query-utils');
 // ===== CREATE =====
 
 async function create(patientData, options = {}) {
+    console.log(patientData)
     return await Patient.create(patientData, options);
 }
 
@@ -88,6 +89,13 @@ async function findByUuidPlain(uuid, options = {}) {
     });
 }
 
+async function findByDni(dni, options = {}) {
+    return await Patient.findOne({
+        where: { dni },
+        ...options,
+    });
+}
+
 async function findByUuidDetailed(uuid, options = {}) {
     return await Patient.findOne({
         where: { uuid },
@@ -165,6 +173,7 @@ module.exports = {
     findAllPlain,
     searchFiltered,
     searchPatients,
+    findByDni,
     findByUuidPlain,
     findByUuidDetailed,
     findByIdPlain,

@@ -10,14 +10,20 @@ const AuditLog = sequelize.define(
             autoIncrement: true,
             allowNull: false,
         },
-        uuid: { 
-            type: DataTypes.UUID, 
-            defaultValue: DataTypes.UUIDV4, 
-            allowNull: false, 
-            unique: true 
+        uuid: {
+            type: DataTypes.UUID,
+            defaultValue: DataTypes.UUIDV4,
+            allowNull: false,
+            unique: true,
         },
         action: {
-            type: DataTypes.ENUM('CREATED', 'STATUS_CHANGED'),
+            type: DataTypes.ENUM(
+                'CREATED',
+                'STATUS_CHANGED',
+                'UPDATED',
+                'DELETED',
+                'CLINICAL_STATUS_CHANGED',
+            ),
             allowNull: false,
         },
         entityType: {
@@ -32,26 +38,23 @@ const AuditLog = sequelize.define(
             type: DataTypes.INTEGER,
             allowNull: false,
             references: { model: 'Users', key: 'id' },
-            onDelete: 'RESTRICT', 
+            onDelete: 'RESTRICT',
         },
         patientId: {
             type: DataTypes.INTEGER,
             allowNull: false,
             references: { model: 'Patients', key: 'id' },
-            onDelete: 'RESTRICT', 
+            onDelete: 'RESTRICT',
         },
         meta: {
-            type: DataTypes.JSON, 
+            type: DataTypes.JSON,
         },
     },
     {
-        tableName: 'AuditLogs', 
+        tableName: 'AuditLogs',
         timestamps: true,
-        indexes: [
-            { fields: ['patientId'] }, 
-            { fields: ['entityType', 'entityId'] }
-        ],
-    }
+        indexes: [{ fields: ['patientId'] }, { fields: ['entityType', 'entityId'] }],
+    },
 );
 
 module.exports = {

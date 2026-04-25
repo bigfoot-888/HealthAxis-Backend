@@ -54,6 +54,8 @@ async function seedRolesAndPermissions() {
 
         // Dashboard
         'dashboard:read',
+        'dashboard:update',
+        'dashboard:delete',
         'role:read'
     ];
 

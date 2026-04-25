@@ -2,10 +2,12 @@ const { v4: uuidv4 } = require('uuid');
 const sequelize = require('../config/database');
 
 const DiagnosisRepository = require('../repositories/diagnosis.repository');
-const AppointmentRepository = require('../repositories/appointment.repository')
+const AppointmentRepository = require('../repositories/appointment.repository');
 const PatientRepository = require('../repositories/patient.repository');
+const AuditLogRepository = require('../repositories/audit-log.repository');
 
 const NotFoundError = require('../errors/NotFoundError');
+const ValidationError = require('../errors/ValidationError');
 const { throwIfNotExists } = require('../utils/error-utils');
 
 const { createPrimaryFlowEvent } = require('../utils/flow-event');
@@ -24,24 +26,76 @@ const { createPrimaryFlowEvent } = require('../utils/flow-event');
  * @param {Array<{userId: number, role: string}>} users
  * @returns {Promise<Object>}
  */
-async function createDiagnosis(diagnosisData, users = []) {
+async function createDiagnosis(diagnosisData, users = [], userId) {
     return await sequelize.transaction(async (t) => {
-        const diagnosis = await DiagnosisRepository.create(
-            {
-                ...diagnosisData,
-                uuid: uuidv4(),
-            },
-            { transaction: t },
-        );
+        // Patient exists
+        const patient = await PatientRepository.findByIdPlain(diagnosisData.patientId, { transaction: t });
+        throwIfNotExists(patient, 'paciente', { id: diagnosisData.patientId });
 
-        if (users.length > 0) {
-            await DiagnosisRepository.associateUsers(diagnosis, users, { transaction: t });
+        // Appointment exists
+        if (diagnosisData.appointmentId) {
+            const appointment = await AppointmentRepository.findById(diagnosisData.appointmentId, { transaction: t });
+            throwIfNotExists(appointment, 'cita', { id: diagnosisData.appointmentId });
+
+            // Check for inconsistencies
+            if (appointment.patientId !== diagnosisData.patientId)
+                throw new ValidationError('La cita no pertenece al paciente');
         }
+
+        // At least one user
+        if (!users || users.length === 0) throw new ValidationError('Debe haber al menos un profesional');
+
+        // No duplicates
+        const userIds = users.map((u) => u.userId);
+        const uniqueUserIds = new Set(userIds);
+        if (uniqueUserIds.size !== userIds.length) throw new ValidationError('No puede haber usuarios duplicados');
+
+        // Users exist
+        for (const u of users) {
+            const user = await UserRepository.findById(u.userId, { transaction: t });
+            throwIfNotExists(user, 'usuario');
+        }
+
+        const validRoles = ['AUTHOR', 'REVIEWER', 'VALIDATOR', 'CONTRIBUTOR'];
+
+        // Valid role
+        for (const u of users) {
+            if (!validRoles.includes(u.role)) {
+                throw new ValidationError(`Rol inválido: ${u.role}`);
+            }
+        }
+
+        // Date inconsistencies
+        if (diagnosisData.resolvedAt && diagnosisData.diagnosedAt) {
+            if (new Date(diagnosisData.resolvedAt) < new Date(diagnosisData.diagnosedAt)) {
+                throw new ValidationError('La fecha de resolución no puede ser anterior al diagnóstico', {
+                    resolvedAt: diagnosisData.resolvedAt,
+                    diagnosedAt: diagnosisData.diagnosedAt,
+                });
+            }
+        }
+
+        const diagnosis = await DiagnosisRepository.create({ ...diagnosisData, uuid: uuidv4() }, { transaction: t });
+
+        await DiagnosisRepository.associateUsers(diagnosis, users, { transaction: t });
 
         await createPrimaryFlowEvent({
             patientId: diagnosis.patientId,
             type: 'DIAGNOSIS',
             title: 'Diagnóstico registrado en el sistema',
+            entityId: diagnosis.id,
+            transaction: t,
+        });
+
+        await AuditLogRepository.createAuditLog({
+            action: 'CREATED',
+            entityType: 'DIAGNOSIS',
+            entityId: diagnosis.id,
+            userId,
+            patientId: diagnosis.patientId,
+            meta: {
+                appointmentId: diagnosis.appointmentId,
+            },
             transaction: t,
         });
 
@@ -72,8 +126,6 @@ async function getDiagnoses(query = {}) {
         throwIfNotExists(appointment, 'cita', { appointmentUuid });
         where.appointmentId = appointment.id;
     }
-
-    console.log(where)
 
     return await DiagnosisRepository.findAll({ where });
 }
@@ -142,17 +194,63 @@ async function searchDiagnoses({ patient, name }) {
  *
  * @param {string} uuid
  * @param {string} clinicalStatus
+ * @param {string} userId
  * @returns {Promise<number>}
  * @throws {NotFoundError}
  */
-async function updateDiagnosisClinicalStatus(uuid, clinicalStatus) {
-    const [count] = await DiagnosisRepository.updateClinicalStatusByUuid(uuid, clinicalStatus);
+async function updateDiagnosisClinicalStatus(uuid, clinicalStatus, userId) {
+    return await sequelize.transaction(async (t) => {
+        const diagnosis = await DiagnosisRepository.findByUuidPlain(uuid, { transaction: t });
+        throwIfNotExists(diagnosis, 'diagnóstico', { uuid });
 
-    if (count === 0) {
-        throw new NotFoundError('No se ha podido actualizar el estado clínico del diagnóstico', { uuid });
-    }
+        const previousClinicalStatus = diagnosis.clinicalStatus;
 
-    return count;
+        const [count] = await DiagnosisRepository.updateClinicalStatusByUuid(uuid, clinicalStatus, { transaction: t });
+
+        if (count === 0) {
+            throw new NotFoundError('No se ha podido actualizar el estado clínico del diagnóstico', { uuid });
+        }
+
+        if (clinicalStatus !== previousClinicalStatus) {
+            await AuditLogRepository.createAuditLog({
+                action: 'CLINICAL_STATUS_CHANGED',
+                entityType: 'DIAGNOSIS',
+                entityId: diagnosis.id,
+                userId,
+                patientId: diagnosis.patientId,
+                meta: {
+                    previousClinicalStatus,
+                    newClinicalStatus: clinicalStatus,
+                },
+                transaction: t,
+            });
+        }
+
+        const relevantStatuses = ['RESOLVED', 'RULED_OUT'];
+
+        if (clinicalStatus !== previousClinicalStatus && relevantStatuses.includes(clinicalStatus)) {
+            let title = '';
+
+            switch (clinicalStatus) {
+                case 'RESOLVED':
+                    title = 'Diagnóstico resuelto';
+                    break;
+                case 'INACTIVE':
+                    title = 'Diagnóstico descartado';
+                    break;
+            }
+
+            await createPrimaryFlowEvent({
+                patientId: diagnosis.patientId,
+                type: 'DIAGNOSIS',
+                title,
+                entityId: diagnosis.id,
+                transaction: t,
+            });
+        }
+
+        return count;
+    });
 }
 
 /**
@@ -160,19 +258,41 @@ async function updateDiagnosisClinicalStatus(uuid, clinicalStatus) {
  *
  * @param {string} uuid
  * @param {string} status
+ * @param {string} userId
  * @returns {Promise<number>}
  * @throws {NotFoundError}
  */
-async function updateDiagnosisRecordStatus(uuid, status) {
-    const [count] = await DiagnosisRepository.updateRecordStatusByUuid(uuid, status);
+async function updateDiagnosisRecordStatus(uuid, status, userId) {
+    return await sequelize.transaction(async (t) => {
+        const diagnosis = await DiagnosisRepository.findByUuidPlain(uuid, { transaction: t });
+        throwIfNotExists(diagnosis, 'diagnóstico', { uuid });
 
-    if (count === 0) {
-        throw new NotFoundError('No se ha podido actualizar el estado del diagnóstico', { uuid });
-    }
+        const previousStatus = diagnosis.status;
 
-    return count;
+        const [count] = await DiagnosisRepository.updateRecordStatusByUuid(uuid, status, { transaction: t });
+
+        if (count === 0) {
+            throw new NotFoundError('No se ha podido actualizar el estado del diagnóstico', { uuid });
+        }
+
+        if (status !== previousStatus) {
+            await AuditLogRepository.createAuditLog({
+                action: 'STATUS_CHANGED',
+                entityType: 'DIAGNOSIS',
+                entityId: diagnosis.id,
+                userId,
+                patientId: diagnosis.patientId,
+                meta: {
+                    previousStatus,
+                    newStatus: status,
+                },
+                transaction: t,
+            });
+        }
+
+        return count;
+    });
 }
-
 module.exports = {
     createDiagnosis,
 

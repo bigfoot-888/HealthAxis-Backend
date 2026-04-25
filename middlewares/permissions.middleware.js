@@ -14,4 +14,4 @@ function requirePermission(permission) {
     };
 }
 
-module.exports = requirePermission;
+module.exports = {requirePermission};

@@ -43,6 +43,19 @@ async function hasActiveAppointmentsByUserId(userId, options = {}) {
     return result;
 }
 
+async function hasActiveAppointmentsByPatientId(patientId, options = {}) {
+    const result = await Appointment.findOne({
+        where: {
+            patientId,
+            status: ACTIVE_APPOINTMENT_STATUSES,
+        },
+        attributes: ['id'], 
+        ...options,
+    });
+
+    return result;
+}
+
 async function findByUuid(uuid, options = {}) {
     return await Appointment.findOne({
         where: { uuid },
@@ -64,6 +77,10 @@ async function findByUuidPlain(uuid, options = {}) {
         where: { uuid },
         ...options,
     });
+}
+
+async function findById(id, options={}) {
+    return await Appointment.findByPk(id, {...options})
 }
 
 async function searchFiltered(query, limit = 20, options = {}) {
@@ -158,6 +175,7 @@ module.exports = {
     searchFiltered,
     searchAppointments,
     hasActiveAppointmentsByUserId,
-
+    hasActiveAppointmentsByPatientId,
+    findById,
     updateByUuid,
 };

@@ -20,43 +20,18 @@ const createAppointmentRules = [
         .withMessage('El tipo de cita es obligatorio')
         .isIn(['IN_PERSON', 'VIRTUAL'])
         .withMessage('El tipo de cita debe ser en persona o virtual'),
-    // check('state')
-    //     .notEmpty()
-    //     .withMessage('El estado de la cita es obligatorio')
-    //     .isIn(['SCHEDULED', 'COMPLETED', 'CANCELLED', 'NO_SHOW', 'CHECKED_IN'])
-    //     .withMessage('El estado de la cita debe ser uno de los valores permitidos'),
     check('startTime')
         .notEmpty()
         .withMessage('La fecha y hora de inicio es obligatoria')
         .custom((value) => {
             const startTime = new Date(value);
-            const today = new Date();
-            if (startTime < today) {
-                throw new ValidationError('La fecha y hora de inicio no puede ser anterior a la fecha y hora actual', {
-                    startTime: value,
-                });
+
+            if (isNaN(startTime)) {
+                throw new ValidationError('Fecha inválida', { startTime: value });
             }
 
             return true;
         }),
-    // check('end_time')
-    //     .notEmpty()
-    //     .withMessage('La fecha y hora de finalización es obligatoria')
-    //     .custom((value, { req }) => {
-    //         const endTime = new Date(value);
-    //         const startTime = new Date(req.body.start_time);
-
-    //         if (endTime < startTime) {
-    //             throw new ValidationError(
-    //                 'La fecha y hora de finalización no puede ser anterior a la fecha y hora de inicio',
-    //                 {
-    //                     end_time: value,
-    //                     start_time: req.body.start_time,
-    //                 },
-    //             );
-    //         }
-    //         return true;
-    //     }),
     check('user')
         .notEmpty()
         .withMessage('El usuario es obligatorio')
@@ -87,7 +62,7 @@ const createAppointmentRules = [
         }),
 ];
 
-const editAppointmentRules = [
+const updateAppointmentRules = [
     check('reason')
         .notEmpty()
         .withMessage('La razón es obligatoria')
@@ -100,11 +75,6 @@ const editAppointmentRules = [
         .withMessage('El tipo de cita es obligatorio')
         .isIn(['IN_PERSON', 'VIRTUAL'])
         .withMessage('El tipo de cita debe ser en persona o virtual'),
-    // check('state')
-    //     .notEmpty()
-    //     .withMessage('El estado de la cita es obligatorio')
-    //     .isIn(['SCHEDULED', 'COMPLETED', 'CANCELLED', 'NO_SHOW', 'CHECKED_IN'])
-    //     .withMessage('El estado de la cita debe ser uno de los valores permitidos'),
     check('startTime')
         .notEmpty()
         .withMessage('La fecha y hora de inicio es obligatoria')
@@ -123,5 +93,5 @@ const editAppointmentRules = [
 
 module.exports = {
     createAppointmentRules,
-    editAppointmentRules,
+    updateAppointmentRules,
 };

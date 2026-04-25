@@ -15,12 +15,13 @@ async function createClinicalDocumentController(req, res) {
         userId: u.user.id,
         role: u.role,
     }));
-
+    documentData.userId = req.user.id;
     const document = await clinicalDocumentService.createClinicalDocument(
         documentData,
         attachments,
         mappedEntities,
         mappedUsers,
+        
     );
 
     res.status(201).json(document);
@@ -38,6 +39,7 @@ async function createClinicalAttachmentController(req, res) {
         fileName: file.originalname,
         mimeType: file.mimetype,
         fileSize: file.size,
+        userId: req.user.id
     });
 
     res.status(201).json(attachment);
@@ -53,7 +55,6 @@ async function getClinicalDocumentsController(req, res) {
 async function getFilteredClinicalDocumentsController(req, res) {
     const query = req.query.query || '';
     const limit = parseInt(req.query.limit, 10) || 20;
-
     const documents = await clinicalDocumentService.getFilteredClinicalDocuments(query, limit);
     res.status(200).json(documents);
 }
@@ -73,10 +74,10 @@ async function getClinicalDocumentPlainController(req, res) {
 }
 
 async function getClinicalAttachmentController(req, res) {
-    const { uuid } = req.params;
+    const { id } = req.params;
 
     const { fileBuffer, mimeType, fileName } =
-        await clinicalDocumentService.getClinicalAttachment(uuid);
+        await clinicalDocumentService.getClinicalAttachment(id);
 
     res.setHeader('Content-Type', mimeType);
     res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
@@ -94,10 +95,10 @@ async function updateClinicalDocumentStatusController(req, res) {
 }
 
 async function updateClinicalAttachmentStatusController(req, res) {
-    const { uuid } = req.params;
+    const { id } = req.params;
     const { status } = req.body;
 
-    const updated = await clinicalDocumentService.updateClinicalAttachmentStatus(uuid, status);
+    const updated = await clinicalDocumentService.updateClinicalAttachmentStatus(id, status);
     res.status(200).json({ updated });
 }
 

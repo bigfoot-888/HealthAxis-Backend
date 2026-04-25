@@ -13,7 +13,7 @@ const validateRequest = require('../../middlewares/request-validator.middleware'
 const asyncHandler = require('../../middlewares/async-handler.middleware');
 const { validateUuidParam } = require('../../middlewares/valid-uuid.middleware');
 
-const requirePermission = require('../../middlewares/permissions.middleware'); 
+const {requirePermission} = require('../../middlewares/permissions.middleware'); 
 const {requireAuth} = require('../../middlewares/auth.middleware'); 
 
 router.use(requireAuth); 
@@ -38,12 +38,10 @@ router.get('/', requirePermission("clinical-document:read"), asyncHandler(clinic
 router.get('/filtered', requirePermission("clinical-document:read"), asyncHandler(clinicalDocumentController.getFilteredClinicalDocumentsController));
 
 router.get(
-    '/attachments/:uuid/download',
+    '/attachments/:id/download',
     requirePermission("clinical-document:read"), 
-    validateUuidParam('uuid'),
     asyncHandler(clinicalDocumentController.getClinicalAttachmentController),
 );
-router.get('/:uuid', requirePermission("clinical-document:read"), validateUuidParam('uuid'), asyncHandler(clinicalDocumentController.getClinicalDocumentController));
 router.get(
     '/:uuid/plain',
     requirePermission("clinical-document:read"), 
@@ -57,10 +55,12 @@ router.patch(
     validateUuidParam('uuid'),
     asyncHandler(clinicalDocumentController.updateClinicalDocumentStatusController),
 );
+
+router.get('/:uuid', requirePermission("clinical-document:read"), validateUuidParam('uuid'), asyncHandler(clinicalDocumentController.getClinicalDocumentController));
+
 router.patch(
-    '/attachments/:uuid/status',
+    '/attachments/:id/status',
     requirePermission("clinical-document:update"), 
-    validateUuidParam('uuid'),
     asyncHandler(clinicalDocumentController.updateClinicalAttachmentStatusController),
 );
 

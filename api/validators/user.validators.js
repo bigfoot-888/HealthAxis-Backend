@@ -3,11 +3,25 @@ const userService = require('../../services/user.service');
 const ConflictError = require('../../errors/ConflictError');
 
 const createUserRules = [
-    check('name').notEmpty().withMessage('El nombre es obligatorio'),
-    check('surname').notEmpty().withMessage('El apellido es obligatorio'),
+    check('name')
+        .notEmpty()
+        .withMessage('El nombre es obligatorio')
+        .isLength({ max: 50 })
+        .withMessage('Máximo 50 caracteres'),
+
+    check('surname')
+        .notEmpty()
+        .withMessage('El apellido es obligatorio')
+        .isLength({ max: 60 })
+        .withMessage('Máximo 60 caracteres'),
+
     check('email')
+        .notEmpty()
+        .withMessage('El correo es obligatorio')
         .isEmail()
-        .withMessage('El correo debe tener un formato válido')
+        .withMessage('Formato inválido. Ejemplo: nombre@ejemplo.com')
+        .isLength({ max: 100 })
+        .withMessage('Máximo 100 caracteres')
         .custom(async (value) => {
             const existingUser = await userService.getUserByEmail(value);
             if (existingUser) {
@@ -16,13 +30,71 @@ const createUserRules = [
                 });
             }
         }),
+
     check('password')
-        .isLength({ min: 6 })
-        .withMessage('La contraseña debe tener al menos 6 caracteres'),
+        .notEmpty()
+        .withMessage('La contraseña es obligatoria')
+        .isLength({ min: 6, max: 255 })
+        .withMessage('Debe tener entre 6 y 255 caracteres'),
+
     check('phone')
-        .optional()
-        .isMobilePhone('any')
-        .withMessage('Teléfono no válido'),
+        .notEmpty()
+        .withMessage('El teléfono es obligatorio')
+        .isLength({ max: 20 })
+        .withMessage('Máximo 20 caracteres')
+        .matches(/^[0-9+()\s-]+$/)
+        .withMessage('Formato inválido. Ejemplo: 612345678 o +34 612 345 678'),
+
+    check('agendaId').notEmpty().withMessage('La agenda es obligatoria').isInt().withMessage('Agenda inválida'),
+
+    check('roles').optional().isArray().withMessage('Roles debe ser un array'),
+
+    check('roles.*').optional().isString().withMessage('Rol inválido'),
 ];
 
-module.exports = createUserRules;
+const updateUserRules = [
+    check('name')
+        .notEmpty()
+        .withMessage('El nombre es obligatorio')
+        .isLength({ max: 50 })
+        .withMessage('Máximo 50 caracteres'),
+
+    check('surname')
+        .notEmpty()
+        .withMessage('El apellido es obligatorio')
+        .isLength({ max: 60 })
+        .withMessage('Máximo 60 caracteres'),
+
+    check('email')
+        .notEmpty()
+        .withMessage('El correo es obligatorio')
+        .isEmail()
+        .withMessage('Formato inválido. Ejemplo: nombre@ejemplo.com')
+        .isLength({ max: 100 })
+        .withMessage('Máximo 100 caracteres')
+        .custom(async (value, { req }) => {
+            const existingUser = await userService.getUserByEmail(value);
+
+            if (existingUser && existingUser.uuid !== req.params.uuid) {
+                throw new ConflictError('Error, el correo ya existe', {
+                    email: value,
+                });
+            }
+        }),
+
+    check('phone')
+        .notEmpty()
+        .withMessage('El teléfono es obligatorio')
+        .isLength({ max: 20 })
+        .withMessage('Máximo 20 caracteres')
+        .matches(/^[0-9+()\s-]+$/)
+        .withMessage('Formato inválido. Ejemplo: 612345678 o +34 612 345 678'),
+
+    check('agendaId').notEmpty().withMessage('La agenda es obligatoria').isInt().withMessage('Agenda inválida'),
+
+    check('roles').optional().isArray().withMessage('Roles debe ser un array'),
+
+    check('roles.*').optional().isString().withMessage('Rol inválido'),
+];
+
+module.exports = { createUserRules, updateUserRules };

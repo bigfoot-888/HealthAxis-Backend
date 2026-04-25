@@ -1,9 +1,9 @@
 const { Sequelize } = require('sequelize');
-console.log(process.env.DATABASE_URL)
+
 const sequelize = process.env.DATABASE_URL
     ? new Sequelize(process.env.DATABASE_URL, {
           dialect: 'postgres',
-          logging: console.log,
+          logging: false, 
           dialectOptions: { ssl: { rejectUnauthorized: false } },
       })
     : new Sequelize(
@@ -14,7 +14,7 @@ const sequelize = process.env.DATABASE_URL
               host: process.env.PGHOST,
               port: process.env.PGPORT,
               dialect: 'postgres',
-              logging: console.log,
+              logging: false, 
           },
       );
 
@@ -27,6 +27,8 @@ async function testDB() {
     }
 }
 
-testDB();
+if (process.env.NODE_ENV !== 'test') {
+    testDB();
+}
 
 module.exports = sequelize;

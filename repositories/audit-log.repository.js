@@ -1,4 +1,4 @@
-const { AuditLog } = require('../models/index');
+const { AuditLog, User } = require('../models/index');
 const AppError = require('../errors/AppError');
 /**
  * Creates a new audit log entry.
@@ -31,6 +31,28 @@ async function createAuditLog({ action, entityType, entityId, userId, patientId,
     }
 }
 
+/**
+ * Retrieves audit logs by patient ID.
+ *
+ * @param {number} patientId
+ * @returns {Promise<Array<Object>>} List of audit logs
+ */
+async function findByPatientId(patientId) {
+    return AuditLog.findAll({
+        where: { patientId },
+        include: [
+            {
+                model: User,
+                as: "user",
+                attributes: ['id', 'name', 'surname'],
+            },
+        ],
+        order: [['createdAt', 'DESC']],
+        limit: 50,
+    });
+}
+
 module.exports = {
+    findByPatientId,
     createAuditLog,
 };

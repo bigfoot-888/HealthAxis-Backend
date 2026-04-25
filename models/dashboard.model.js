@@ -46,7 +46,7 @@ const DashboardComponent = sequelize.define(
         },
         title: { type: DataTypes.STRING(100), allowNull: false },
         type: {
-            type: DataTypes.ENUM('KPI', 'LINE_CHART', 'BAR_CHART', 'PIE_CHART'),
+            type: DataTypes.ENUM('KPI', 'LINE_CHART', 'BAR_CHART', 'PIE_CHART', 'LIST'),
             allowNull: false,
         },
         config: {

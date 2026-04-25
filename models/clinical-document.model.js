@@ -16,6 +16,12 @@ const ClinicalDocument = sequelize.define(
             allowNull: false,
             unique: true,
         },
+        userId: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            references: { model: 'Users', key: 'id' },
+            onDelete: 'RESTRICT',
+        },
         title: { type: DataTypes.STRING(100), allowNull: false },
         documentType: {
             type: DataTypes.ENUM('CLINICAL_SUMMARY', 'PROGRESS_NOTE', 'CONSULT_NOTE', 'EXTERNAL_FILE', 'OTHER'),

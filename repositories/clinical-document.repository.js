@@ -64,25 +64,37 @@ async function findByUuidPlain(uuid, options = {}) {
     });
 }
 
-async function findAttachmentByUuid(uuid, options = {}) {
-    return await ClinicalAttachment.findOne({
-        where: { uuid },
+async function findByIdPlain(id, options = {}) {
+    return await ClinicalDocument.findByPk(id, {
         ...options,
     });
+}
+
+async function findByIds(ids = [], options = {}) {
+    if (ids.length === 0) return [];
+    return await ClinicalDocument.findAll({
+        where: { id: ids },
+        ...options,
+    });
+}
+
+async function findAttachmentById(id, options={}){
+    return await ClinicalAttachment.findByPk(id, {...options})
 }
 
 async function searchFiltered(query, limit = 20, options = {}) {
     if (!query || query.length < 2) return [];
 
     const safeQuery = `%${escapeLike(query)}%`;
-
+    console.log(safeQuery)
     return await ClinicalDocument.findAll({
-        attributes: ['id', 'name'],
+        attributes: ['id', 'title'],
         where: {
-            status: 'ACTIVE',
-            name: { [Op.iLike]: safeQuery },
+            [Op.or]: [
+                { title: { [Op.iLike]: safeQuery },},
+            ],
         },
-        order: [['name', 'ASC']],
+        order: [['title', 'ASC']],
         limit: Math.min(limit, 50),
         ...options,
     });
@@ -100,15 +112,16 @@ async function updateStatusByUuid(uuid, status, options = {}) {
     );
 }
 
-async function updateAttachmentStatusByUuid(uuid, status, options = {}) {
+async function updateAttachmentStatusById(id, status, options = {}) {
     return await ClinicalAttachment.update(
         { status },
         {
-            where: { uuid },
+            where: { id },
             ...options,
         },
     );
 }
+
 
 module.exports = {
     create,
@@ -120,9 +133,11 @@ module.exports = {
     findAll,
     findByUuid,
     findByUuidPlain,
-    findAttachmentByUuid,
     searchFiltered,
+    findByIdPlain,
+    findAttachmentById,
+    findByIds,
 
     updateStatusByUuid,
-    updateAttachmentStatusByUuid,
+    updateAttachmentStatusById,
 };

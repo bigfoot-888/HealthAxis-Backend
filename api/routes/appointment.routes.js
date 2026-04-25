@@ -5,11 +5,11 @@ const asyncHandler = require('../../middlewares/async-handler.middleware');
 const { validateUuidParam } = require('../../middlewares/valid-uuid.middleware');
 
 const appointmentController = require('../controllers/appointment.controller');
-const { createAppointmentRules, editAppointmentRules } = require('../validators/appointment.validators');
+const { createAppointmentRules, updateAppointmentRules } = require('../validators/appointment.validators');
 
 const validateRequest = require('../../middlewares/request-validator.middleware');
 
-const requirePermission = require('../../middlewares/permissions.middleware'); 
+const {requirePermission} = require('../../middlewares/permissions.middleware'); 
 const {requireAuth} = require('../../middlewares/auth.middleware'); 
 
 router.use(requireAuth); 
@@ -43,7 +43,7 @@ router.put(
     '/:uuid',
     requirePermission("appointment:update"), 
     validateUuidParam('uuid'),
-    editAppointmentRules,
+    updateAppointmentRules,
     validateRequest,
     asyncHandler(appointmentController.updateAppointmentController),
 );

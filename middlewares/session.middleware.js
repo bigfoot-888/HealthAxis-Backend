@@ -9,6 +9,9 @@ const redisClient = createClient({
 redisClient.connect().catch(console.error);
 
 function sessionMiddleware() {
+    if (process.env.NODE_ENV === 'test') {
+        return (req, res, next) => next();
+    }
     return session({
         store: new RedisStore({ client: redisClient }),
         name: 'sessionId',

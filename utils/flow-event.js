@@ -1,11 +1,11 @@
 const NotFoundError = require('../errors/NotFoundError');
 const { FlowEvent, PatientFlow } = require('../models/index');
 
-const HORIZONTAL_SPACING = 250;
+const HORIZONTAL_SPACING = 350;
 const START_X = 100;
 const START_Y = 200;
 
-async function createPrimaryFlowEvent({ patientId, type, title, transaction }) {
+async function createPrimaryFlowEvent({ patientId, type, title, entityId, transaction }) {
     // Get the flow
     const flow = await PatientFlow.findOne({
         where: { patientId },
@@ -42,6 +42,7 @@ async function createPrimaryFlowEvent({ patientId, type, title, transaction }) {
             role: 'PRIMARY',
             patientFlowId: flow.id,
             parentEventId: latestEvent ? latestEvent.id : null,
+            entityId,
             positionX,
             positionY,
         },
@@ -60,7 +61,10 @@ function getRadialPosition(centerX, centerY, index, total) {
     };
 }
 
-async function createSecondaryFlowEvent({ patientId, type, title, transaction, parentId }) {
+const SECONDARY_OFFSET_X = 30;
+const SECONDARY_SPACING_Y = 100;
+
+async function createSecondaryFlowEvent({ patientId, type, title, parentId, entityId, transaction }) {
     const flow = await PatientFlow.findOne({
         where: { patientId },
         transaction,
@@ -76,19 +80,19 @@ async function createSecondaryFlowEvent({ patientId, type, title, transaction, p
         throw new NotFoundError('Parent event not found', { parentId });
     }
 
-    // Count existing secondary children
     const siblings = await FlowEvent.findAll({
         where: {
             parentEventId: parentId,
             role: 'SECONDARY',
         },
+        order: [['date', 'ASC']],
         transaction,
     });
 
     const index = siblings.length;
-    const total = siblings.length + 1;
 
-    const { x, y } = getRadialPosition(parent.positionX, parent.positionY, index, total);
+    const positionX = parent.positionX + SECONDARY_OFFSET_X;
+    const positionY = parent.positionY + (index + 1) * SECONDARY_SPACING_Y;
 
     return FlowEvent.create(
         {
@@ -98,8 +102,9 @@ async function createSecondaryFlowEvent({ patientId, type, title, transaction, p
             role: 'SECONDARY',
             patientFlowId: flow.id,
             parentEventId: parentId,
-            positionX: x,
-            positionY: y,
+            entityId,
+            positionX,
+            positionY,
         },
         { transaction },
     );

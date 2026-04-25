@@ -10,6 +10,20 @@ async function findByUserId(userId, options = {}) {
     });
 }
 
+async function updateComponentPosition(componentId, position) {
+    console.log(position)
+    return DashboardComponent.update(
+        { position },
+        { where: { id: componentId } }
+    );
+}
+
+async function createComponent(componentData, options = {}) {
+    return DashboardComponent.create(componentData, options);
+}
+
 module.exports = {
     findByUserId,
+    updateComponentPosition,
+    createComponent
 };

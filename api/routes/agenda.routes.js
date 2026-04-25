@@ -9,7 +9,7 @@ const { updateAgendaRules, createAgendaRules } = require('../validators/agenda.v
 const { updateAgendaPeriodRules, createAgendaPeriodRules } = require('../validators/agenda-period.validators');
 const validateRequest = require('../../middlewares/request-validator.middleware');
 
-const requirePermission = require('../../middlewares/permissions.middleware'); 
+const {requirePermission} = require('../../middlewares/permissions.middleware'); 
 const {requireAuth} = require('../../middlewares/auth.middleware'); 
 
 router.use(requireAuth); 

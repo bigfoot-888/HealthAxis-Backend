@@ -48,7 +48,7 @@ const FlowEvent = sequelize.define(
         date: { type: DataTypes.DATE, allowNull: false },
         title: { type: DataTypes.STRING(100), allowNull: false },
         type: {
-            type: DataTypes.ENUM('APPOINTMENT', 'DIAGNOSIS', 'TREATMENT', 'CLINICAL_DOCUMENT', 'OTHER', 'REGISTRATION', 'REACTIVATION', 'DEACTIVATION'),
+            type: DataTypes.ENUM('APPOINTMENT', 'DIAGNOSIS', 'TREATMENT', 'CLINICAL_DOCUMENT', 'PATIENT', 'OTHER'),
             defaultValue: 'OTHER',
             allowNull: false,
         },

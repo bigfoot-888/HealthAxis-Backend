@@ -20,7 +20,7 @@ async function createTreatmentController(req, res) {
         },
     }));
 
-    const treatment = await treatmentService.createTreatment(payload, mappedUsers);
+    const treatment = await treatmentService.createTreatment(payload, mappedUsers, req.user.id);
 
     res.status(201).json(treatment);
 }
@@ -50,7 +50,7 @@ async function updateTreatmentClinicalStatusController(req, res) {
     const { uuid } = req.params;
     const { clinicalStatus } = req.body;
 
-    const updated = await treatmentService.updateTreatmentClinicalStatus(uuid, clinicalStatus);
+    const updated = await treatmentService.updateTreatmentClinicalStatus(uuid, clinicalStatus, req.user.id);
     res.status(200).json({ updated });
 }
 
@@ -58,7 +58,7 @@ async function updateTreatmentStatusController(req, res) {
     const { uuid } = req.params;
     const { status } = req.body;
 
-    const updated = await treatmentService.updateTreatmentStatus(uuid, status);
+    const updated = await treatmentService.updateTreatmentStatus(uuid, status, req.user.id);
     res.status(200).json({ updated });
 }
 

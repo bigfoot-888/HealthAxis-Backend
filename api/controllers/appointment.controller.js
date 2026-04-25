@@ -15,7 +15,7 @@ async function createAppointmentController(req, res) {
         patientId: patient?.id,
     };
 
-    const newAppointment = await appointmentService.createAppointment(appointmentData);
+    const newAppointment = await appointmentService.createAppointment(appointmentData, req.user.id);
     res.status(201).json(newAppointment);
 }
 
@@ -70,7 +70,7 @@ async function updateAppointmentController(req, res) {
         agendaId: agenda,
     };
 
-    const updatedAppointment = await appointmentService.updateAppointment(uuid, appointmentData);
+    const updatedAppointment = await appointmentService.updateAppointment(uuid, appointmentData, req.user.id);
     res.status(200).json(updatedAppointment);
 }
 
@@ -83,7 +83,7 @@ async function updateAppointmentStatusController(req, res) {
     const payload = { status };
     if (notes !== undefined) payload.notes = notes;
 
-    const updated = await appointmentService.updateAppointmentStatus(uuid, payload);
+    const updated = await appointmentService.updateAppointmentStatus(uuid, payload, req.user.id);
     res.status(200).json({ updated });
 }
 

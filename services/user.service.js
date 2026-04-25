@@ -56,6 +56,7 @@ async function createUser(userData, roles = [], userId = 1) {
             const dashboard = await UserRepository.createDashboard(user.id, { transaction: t });
 
             const defaultComponents = [
+                // ===== KPIs =====
                 {
                     title: 'Total Pacientes',
                     type: 'KPI',
@@ -80,11 +81,46 @@ async function createUser(userData, roles = [], userId = 1) {
                     },
                 },
                 {
+                    title: 'Citas Hoy',
+                    type: 'KPI',
+                    position: { x: 4, y: 0, w: 2, h: 2 },
+                    config: {
+                        visuals: { color: 'info.main' },
+                        query: {
+                            entity: 'Appointment',
+                            aggregation: 'COUNT',
+                            targetColumn: 'id',
+                            filters: { date: 'today' },
+                        },
+                    },
+                },
+                {
+                    title: 'Citas en espera',
+                    type: 'KPI',
+                    position: { x: 6, y: 0, w: 2, h: 2 },
+                    config: {
+                        visuals: { color: 'warning.main' },
+                        query: {
+                            entity: 'Appointment',
+                            aggregation: 'COUNT',
+                            targetColumn: 'id',
+                            filters: { status: 'CHECKED_IN' },
+                        },
+                    },
+                },
+
+                // ===== CHART + LIST =====
+                {
                     title: 'Pacientes a lo largo del tiempo',
                     type: 'LINE_CHART',
-                    position: { x: 0, y: 2, w: 4, h: 3 },
+                    position: { x: 0, y: 2, w: 5, h: 3 },
                     config: {
-                        visuals: { xAxisKey: 'x', yAxisKey: 'y', yAxisLabel: 'Pacientes', tooltipLabel: 'Pacientes' },
+                        visuals: {
+                            xAxisKey: 'x',
+                            yAxisKey: 'y',
+                            yAxisLabel: 'Pacientes',
+                            tooltipLabel: 'Pacientes',
+                        },
                         query: {
                             entity: 'Patient',
                             aggregation: 'COUNT',
@@ -95,47 +131,45 @@ async function createUser(userData, roles = [], userId = 1) {
                     },
                 },
                 {
+                    title: 'Próximas Citas',
+                    type: 'LIST',
+                    position: { x: 5, y: 2, w: 3, h: 3 },
+                    config: {
+                        visuals: {
+                            columns: ['patientId', 'startTime', 'status'],
+                        },
+                        query: {
+                            type: 'LIST',
+                            entity: 'Appointment',
+                            scope: 'SELF',
+                            filters: { upcoming: true },
+                            orderBy: {
+                                field: 'startTime',
+                                direction: 'ASC',
+                            },
+                            limit: 5,
+                        },
+                    },
+                },
+
+                // ===== FULL WIDTH =====
+                {
                     title: 'Citas a lo largo del tiempo',
                     type: 'LINE_CHART',
-                    position: { x: 0, y: 5, w: 4, h: 3 },
+                    position: { x: 0, y: 5, w: 8, h: 3 },
                     config: {
-                        visuals: { xAxisKey: 'x', yAxisKey: 'y', yAxisLabel: 'Citas', tooltipLabel: 'Citas' },
+                        visuals: {
+                            xAxisKey: 'x',
+                            yAxisKey: 'y',
+                            yAxisLabel: 'Citas',
+                            tooltipLabel: 'Citas',
+                        },
                         query: {
                             entity: 'Appointment',
                             aggregation: 'COUNT',
                             targetColumn: 'id',
                             groupBy: 'startTime',
                             timeGrain: 'week',
-                        },
-                    },
-                },
-                {
-                    title: 'Distribución por Severidad',
-                    type: 'BAR_CHART',
-                    position: { x: 4, y: 0, w: 2, h: 4 },
-                    config: {
-                        visuals: { xAxisKey: 'x', yAxisKey: 'y', tooltipLabel: 'Diagnósticos' },
-                        query: {
-                            entity: 'Diagnosis',
-                            aggregation: 'COUNT',
-                            targetColumn: 'id',
-                            groupBy: 'severity',
-                            filters: { status: 'VALID' },
-                        },
-                    },
-                },
-                {
-                    title: 'Estado de Tratamientos',
-                    type: 'PIE_CHART',
-                    position: { x: 4, y: 4, w: 2, h: 4 },
-                    config: {
-                        visuals: { nameKey: 'x', valueKey: 'y', tooltipLabel: 'Tratamientos' },
-                        query: {
-                            entity: 'Treatment',
-                            aggregation: 'COUNT',
-                            targetColumn: 'id',
-                            groupBy: 'status',
-                            filters: { status: 'VALID' },
                         },
                     },
                 },
@@ -200,7 +234,7 @@ async function importUsers(users) {
  * @returns {Promise<Array<Object>>}
  */
 async function getUsers(query = {}) {
-    console.log("hola")
+    console.log('hola');
     const { agendaUuid } = query;
     const where = {};
     if (agendaUuid) {
@@ -208,7 +242,7 @@ async function getUsers(query = {}) {
         throwIfNotExists(agenda, 'agenda', { agendaUuid });
         where.agendaId = agenda.id;
     }
-    return await UserRepository.findAll({where});
+    return await UserRepository.findAll({ where });
 }
 
 /**
@@ -318,7 +352,9 @@ async function deactivateUser(uuid) {
             throw new NotFoundError('Usuario no encontrado', { uuid });
         }
 
-        const activeAppointments = await AppointmentRepository.hasActiveAppointmentsByUserId(user.id, { transaction: t });
+        const activeAppointments = await AppointmentRepository.hasActiveAppointmentsByUserId(user.id, {
+            transaction: t,
+        });
 
         if (activeAppointments) {
             throw new ValidationError('No se puede dar de baja a un paciente con citas activas.', 400, {
