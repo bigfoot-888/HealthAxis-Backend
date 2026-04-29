@@ -7,6 +7,8 @@ const ValidationError = require('../errors/ValidationError');
 
 const { throwIfNotExists } = require('../utils/error-utils');
 
+const sequelize = require('../config/database');
+
 // Map config → Sequelize model
 const ENTITY_MAP = {
     Patient,
@@ -60,12 +62,10 @@ async function updateLayout(userId, layout) {
         throw new ValidationError('Layout inválido', { layout });
     }
 
-    const layoutMap = Object.fromEntries(
-        layout.map(item => [String(item.id), item])
-    );
-    const updatePromises = resolvedDashboard.components.map(component => {
+    const layoutMap = Object.fromEntries(layout.map((item) => [String(item.id), item]));
+    const updatePromises = resolvedDashboard.components.map((component) => {
         const item = layoutMap[String(component.id)];
-        if (!item) return null; 
+        if (!item) return null;
         return DashboardRepository.updateComponentPosition(component.id, {
             x: item.x,
             y: item.y,
@@ -114,7 +114,7 @@ function getNextAvailableY(components) {
             const y = component.position?.y ?? 0;
             const h = component.position?.h ?? 2;
             return y + h;
-        })
+        }),
     );
 }
 
@@ -179,6 +179,7 @@ async function resolveComponent(component, userId) {
         id: component.id,
         title: component.title,
         vizType: component.type,
+        source: component.source,
         position: component.position || { x: 0, y: 0, w: 2, h: 2 },
         config: config.visuals || {},
         data,
@@ -251,7 +252,6 @@ async function executeDynamicQuery(queryDef, userId) {
 
     // ===== LIST =====
     if (queryDef.type === 'LIST') {
-        
         const results = await Model.findAll({
             where,
             order: orderBy ? [[orderBy.field, orderBy.direction || 'ASC']] : undefined,
@@ -304,8 +304,38 @@ async function executeDynamicQuery(queryDef, userId) {
     return results;
 }
 
+/**
+ * Deletes a dashboard component if it is not a system component.
+ *
+ * Workflow:
+ * - Retrieves component by ID
+ * - Ensures the component exists
+ * - Ensures the component is user-created (not SYSTEM)
+ * - Deletes the component
+ *
+ * @param {string} id - ID of the dashboard component
+ * @param {number} userId - ID of the authenticated user performing the action
+ *
+ * @throws {NotFoundError} If the component does not exist
+ * @throws {ValidationError} If attempting to delete a system component
+ *
+ * @returns {Promise<void>}
+ */
+async function deleteComponent(id) {
+    return await sequelize.transaction(async (t) => {
+        const component = await DashboardRepository.findComponentById(id, {transaction: t});
+        throwIfNotExists(component, 'componente de dashboard');
+
+        // Can't delete system components
+        if (component.source === 'SYSTEM') throw new ValidationError('No se pueden eliminar componentes del sistema');
+
+        await DashboardRepository.deleteComponent(component, {transaction: t});
+    });
+}
+
 module.exports = {
     getDashboard,
     updateLayout,
     createComponent,
+    deleteComponent,
 };

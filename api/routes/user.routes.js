@@ -3,7 +3,7 @@ const router = express.Router();
 
 const userController = require('../controllers/user.controller');
 const asyncHandler = require('../../middlewares/async-handler.middleware');
-const {createUserRules, updateUserRules} = require('../validators/user.validators');
+const {createUserRules, updateUserRules, changePasswordRules} = require('../validators/user.validators');
 const validateRequest = require('../../middlewares/request-validator.middleware');
 const { validateUuidParam } = require('../../middlewares/valid-uuid.middleware');
 
@@ -24,5 +24,14 @@ router.put('/:uuid', requirePermission("user:update"), updateUserRules, validate
 
 router.patch('/:uuid/deactivate', requirePermission("user:delete"), validateUuidParam('uuid'), asyncHandler(userController.deactivateUserController));
 router.patch('/:uuid/reactivate', requirePermission("user:update"), validateUuidParam('uuid'), asyncHandler(userController.reactivateUserController));
+
+router.patch(
+    '/:uuid/change-password',
+    requireAuth,
+    validateUuidParam('uuid'),
+    changePasswordRules,
+    validateRequest,
+    asyncHandler(userController.changeUserPasswordController),
+);
 
 module.exports = router;

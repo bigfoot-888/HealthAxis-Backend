@@ -1,4 +1,4 @@
-const { Treatment, User, Diagnosis, Patient } = require('../models/index');
+const { Treatment, User, Diagnosis, Patient, Appointment } = require('../models/index');
 const { Op, literal } = require('sequelize');
 const { escapeLike } = require('../utils/query-utils');
 
@@ -61,8 +61,16 @@ async function findByUuidDetailed(uuid, options = {}) {
         where: { uuid },
         include: [
             { model: Diagnosis, as: 'diagnosis' },
-            { model: User, as: 'users' },
+            {
+                model: User,
+                as: 'users',
+                through: {
+                    as: 'assignment',
+                    attributes: ['role', 'assignedAt'],
+                },
+            },
             { model: Patient, as: 'patient' },
+            { model: Appointment, as: 'appointment' },
         ],
         ...options,
     });

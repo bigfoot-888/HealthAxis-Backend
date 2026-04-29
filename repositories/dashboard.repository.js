@@ -1,5 +1,11 @@
 const { UserDashboard, DashboardComponent } = require('../models/index');
 
+// ===== CREATE =====
+
+async function createComponent(componentData, options = {}) {
+    return DashboardComponent.create(componentData, options);
+}
+
 // ===== READ =====
 
 async function findByUserId(userId, options = {}) {
@@ -10,20 +16,26 @@ async function findByUserId(userId, options = {}) {
     });
 }
 
-async function updateComponentPosition(componentId, position) {
-    console.log(position)
-    return DashboardComponent.update(
-        { position },
-        { where: { id: componentId } }
-    );
+async function findComponentById(id, options = {}) {
+    return await DashboardComponent.findByPk(id, { ...options });
 }
 
-async function createComponent(componentData, options = {}) {
-    return DashboardComponent.create(componentData, options);
+// ===== UPDATE =====
+
+async function updateComponentPosition(componentId, position) {
+    return DashboardComponent.update({ position }, { where: { id: componentId } });
+}
+
+// ===== DELETE =====
+
+async function deleteComponent(component, options = {}) {
+    return await component.destroy(options);
 }
 
 module.exports = {
     findByUserId,
     updateComponentPosition,
-    createComponent
+    createComponent,
+    findComponentById,
+    deleteComponent
 };

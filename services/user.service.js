@@ -61,6 +61,8 @@ async function createUser(userData, roles = [], userId = 1) {
                     title: 'Total Pacientes',
                     type: 'KPI',
                     position: { x: 0, y: 0, w: 2, h: 2 },
+                    source: 'SYSTEM',
+
                     config: {
                         visuals: { color: 'primary.main' },
                         query: { entity: 'Patient', aggregation: 'COUNT', targetColumn: 'id' },
@@ -70,6 +72,8 @@ async function createUser(userData, roles = [], userId = 1) {
                     title: 'Pacientes Activos',
                     type: 'KPI',
                     position: { x: 2, y: 0, w: 2, h: 2 },
+                    source: 'SYSTEM',
+
                     config: {
                         visuals: { color: 'success.main' },
                         query: {
@@ -84,6 +88,8 @@ async function createUser(userData, roles = [], userId = 1) {
                     title: 'Citas Hoy',
                     type: 'KPI',
                     position: { x: 4, y: 0, w: 2, h: 2 },
+                    source: 'SYSTEM',
+
                     config: {
                         visuals: { color: 'info.main' },
                         query: {
@@ -98,6 +104,8 @@ async function createUser(userData, roles = [], userId = 1) {
                     title: 'Citas en espera',
                     type: 'KPI',
                     position: { x: 6, y: 0, w: 2, h: 2 },
+                    source: 'SYSTEM',
+
                     config: {
                         visuals: { color: 'warning.main' },
                         query: {
@@ -114,6 +122,8 @@ async function createUser(userData, roles = [], userId = 1) {
                     title: 'Pacientes a lo largo del tiempo',
                     type: 'LINE_CHART',
                     position: { x: 0, y: 2, w: 5, h: 3 },
+                    source: 'SYSTEM',
+
                     config: {
                         visuals: {
                             xAxisKey: 'x',
@@ -134,6 +144,8 @@ async function createUser(userData, roles = [], userId = 1) {
                     title: 'Próximas Citas',
                     type: 'LIST',
                     position: { x: 5, y: 2, w: 3, h: 3 },
+                    source: 'SYSTEM',
+
                     config: {
                         visuals: {
                             columns: ['patientId', 'startTime', 'status'],
@@ -152,11 +164,11 @@ async function createUser(userData, roles = [], userId = 1) {
                     },
                 },
 
-                // ===== FULL WIDTH =====
                 {
                     title: 'Citas a lo largo del tiempo',
                     type: 'LINE_CHART',
                     position: { x: 0, y: 5, w: 8, h: 3 },
+                    source: 'SYSTEM',
                     config: {
                         visuals: {
                             xAxisKey: 'x',
@@ -304,6 +316,42 @@ async function searchUsers({ name }) {
 // ===== UPDATE =====
 
 /**
+ * Changes the password of a user.
+ *
+ * Workflow:
+ * - Retrieves user by UUID
+ * - Validates current password
+ * - Ensures new password is different from current one
+ * - Hashes new password
+ * - Persists the updated password
+ *
+ * @param {string} uuid - UUID of the user
+ * @param {string} currentPassword - Current (plain text) password
+ * @param {string} newPassword - New (plain text) password
+ *
+ * @throws {NotFoundError} If the user does not exist
+ * @throws {ValidationError} If the current password is incorrect
+ * @throws {ValidationError} If the new password matches the current password
+ *
+ * @returns {Promise<void>}
+ */
+async function changeUserPassword(uuid, currentPassword, newPassword) {
+    const user = await UserRepository.findByUuid(uuid);
+    throwIfNotExists(user, 'usuario', { uuid });
+
+    const isMatch = await verifyPassword(currentPassword, user.password);
+
+    if (!isMatch) throw new ValidationError('La contraseña actual es incorrecta');
+
+    const isSame = await verifyPassword(newPassword, user.password);
+
+    if (isSame) throw new ValidationError('La nueva contraseña no puede ser igual a la actual');
+
+    const hashedPassword = await hashPassword(newPassword);
+    await UserRepository.updatePassword(user, hashedPassword);
+}
+
+/**
  * Updates user data and roles.
  *
  * Workflow:
@@ -419,6 +467,7 @@ module.exports = {
     updateUser,
     deactivateUser,
     reactivateUser,
+    changeUserPassword,
 
     ensureUserIsActive,
 };

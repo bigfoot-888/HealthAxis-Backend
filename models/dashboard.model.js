@@ -57,6 +57,10 @@ const DashboardComponent = sequelize.define(
             type: DataTypes.JSON,
             allowNull: true,
         },
+        source: {
+            type: DataTypes.ENUM('SYSTEM', 'USER'),
+            defaultValue: 'USER',
+        },
     },
     {
         tableName: 'DashboardComponents',

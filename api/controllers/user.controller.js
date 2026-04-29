@@ -47,12 +47,9 @@ async function getUserController(req, res) {
 }
 
 async function getProfile(req, res) {
-    console.log(req.session)
     const userId = req.session.user.id;
 
-    if (!userId) {
-        throw new Error('El usuario no existe.');
-    }
+    if (!userId) throw new Error('El usuario no existe.');
 
     const user = await userService.getUserById(userId);
     res.status(200).json(user);
@@ -73,6 +70,15 @@ async function updateUserController(req, res) {
 
     const updatedUser = await userService.updateUser(uuid, userData, roles);
     res.status(200).json(updatedUser);
+}
+
+async function changeUserPasswordController(req, res) {
+    const { uuid } = req.params;
+    const { currentPassword, newPassword } = req.body;
+
+    await userService.changeUserPassword(uuid, currentPassword, newPassword);
+
+    res.status(204).send();
 }
 
 // ===== STATE =====
@@ -103,4 +109,5 @@ module.exports = {
     updateUserController,
     deactivateUserController,
     reactivateUserController,
+    changeUserPasswordController,
 };

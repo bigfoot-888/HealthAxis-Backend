@@ -21,8 +21,15 @@ async function createComponentController(req, res) {
     res.status(201).json(component);
 }
 
+async function deleteComponentController(req, res) {
+    const { id } = req.params;
+    await dashboardService.deleteComponent(id);
+    res.status(204).send();
+}
+
 module.exports = {
     getDashboardController,
     createComponentController,
     updateLayoutController,
+    deleteComponentController
 };

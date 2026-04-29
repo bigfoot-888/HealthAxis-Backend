@@ -45,7 +45,7 @@ const createUserRules = [
         .matches(/^[0-9+()\s-]+$/)
         .withMessage('Formato inválido. Ejemplo: 612345678 o +34 612 345 678'),
 
-    check('agendaId').notEmpty().withMessage('La agenda es obligatoria').isInt().withMessage('Agenda inválida'),
+    check('agenda.id').notEmpty().withMessage('La agenda es obligatoria').isInt().withMessage('Agenda inválida'),
 
     check('roles').optional().isArray().withMessage('Roles debe ser un array'),
 
@@ -90,11 +90,23 @@ const updateUserRules = [
         .matches(/^[0-9+()\s-]+$/)
         .withMessage('Formato inválido. Ejemplo: 612345678 o +34 612 345 678'),
 
-    check('agendaId').notEmpty().withMessage('La agenda es obligatoria').isInt().withMessage('Agenda inválida'),
+    check('agenda.id').notEmpty().withMessage('La agenda es obligatoria').isInt().withMessage('Agenda inválida'),
 
     check('roles').optional().isArray().withMessage('Roles debe ser un array'),
 
     check('roles.*').optional().isString().withMessage('Rol inválido'),
 ];
 
-module.exports = { createUserRules, updateUserRules };
+const changePasswordRules = [
+    check('currentPassword').notEmpty().withMessage('La contraseña actual es obligatoria'),
+
+    check('newPassword')
+        .notEmpty()
+        .withMessage('La nueva contraseña es obligatoria')
+        .isLength({ min: 6 })
+        .withMessage('La contraseña debe tener al menos 6 caracteres')
+        .isLength({ max: 255 })
+        .withMessage('Máximo 255 caracteres'),
+];
+
+module.exports = { createUserRules, updateUserRules, changePasswordRules };

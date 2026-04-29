@@ -14,6 +14,8 @@ router.get('/', requirePermission("dashboard:read"), asyncHandler(dashboardContr
 
 router.patch('/layout', requirePermission("dashboard:read"), asyncHandler(dashboardController.updateLayoutController));
 
-router.post('/components', requirePermission("dashboard:read"), requireAuth, dashboardController.createComponentController);
+router.delete('/components/:id', requirePermission("dashboard:read"), asyncHandler(dashboardController.deleteComponentController));
+
+router.post('/components', requirePermission("dashboard:read"), asyncHandler(dashboardController.createComponentController));
 
 module.exports = router;

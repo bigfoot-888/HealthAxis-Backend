@@ -114,7 +114,7 @@ async function findByUuidPlain(uuid, options = {}) {
 
 async function findById(id, options = {}) {
     return await User.findByPk(id, {
-        include: [{ model: Role, as: 'roles' }],
+        include: [{ model: Role, as: 'roles' }, {model: Agenda, as: 'agenda'}],
         ...options,
     });
 }
@@ -166,6 +166,11 @@ async function updateStatusById(id, status, options = {}) {
     );
 }
 
+async function updatePassword(user, hashedPassword, options = {}) {
+    user.password = hashedPassword;
+    return await user.save(options);
+}
+
 module.exports = {
     create,
     bulkCreate,
@@ -190,4 +195,6 @@ module.exports = {
 
     updateByUuid,
     updateStatusById,
+
+    updatePassword,
 };
