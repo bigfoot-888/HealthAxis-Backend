@@ -13,18 +13,15 @@ async function bulkCreate(treatments, options = {}) {
 }
 
 async function associateUsers(treatment, users = [], options = {}) {
-    return await Promise.all(
-        users.map(({ user }) => {
-            const throughData = {
-                role: user.role,
-                ...(user.assignedAt && { assignedAt: user.assignedAt }),
-            };
+    await treatment.setUsers([], options);
 
-            return treatment.addUser(user.id, {
-                through: throughData,
+    return await Promise.all(
+        users.map(({ userId, role }) =>
+            treatment.addUser(userId, {
+                through: { role },
                 ...options,
-            });
-        }),
+            }),
+        ),
     );
 }
 
@@ -70,7 +67,14 @@ async function findByUuidDetailed(uuid, options = {}) {
                 },
             },
             { model: Patient, as: 'patient' },
-            { model: Appointment, as: 'appointment' },
+            {
+                model: Appointment,
+                as: 'appointment',
+                include: [
+                    { model: User, as: 'user' },
+                    { model: Patient, as: 'patient' },
+                ],
+            },
         ],
         ...options,
     });
@@ -158,6 +162,23 @@ async function updateStatus(uuid, newStatus, options = {}) {
     );
 }
 
+async function updateResolvedAt(uuid, resolvedAt, options = {}) {
+    return await Treatment.update(
+        { resolvedAt },
+        {
+            where: { uuid },
+            ...options,
+        },
+    );
+}
+
+async function updateByUuid(uuid, data, options = {}) {
+    return await Treatment.update(data, {
+        where: { uuid },
+        ...options,
+    });
+}
+
 module.exports = {
     create,
     bulkCreate,
@@ -169,4 +190,6 @@ module.exports = {
     searchTreatments,
     updateClinicalStatus,
     updateStatus,
+    updateByUuid,
+    updateResolvedAt,
 };

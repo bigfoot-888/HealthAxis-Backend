@@ -16,18 +16,15 @@ async function addUser(diagnosis, userId, throughData, options = {}) {
 }
 
 async function associateUsers(diagnosis, users = [], options = {}) {
-    return await Promise.all(
-        users.map(({ userId, role, assignedAt }) => {
-            const throughData = {
-                role: role,
-                ...(assignedAt && { assignedAt: assignedAt }),
-            };
+    await diagnosis.setUsers([], options);
 
-            return diagnosis.addUser(userId, {
-                through: throughData,
+    return await Promise.all(
+        users.map(({ userId, role }) =>
+            diagnosis.addUser(userId, {
+                through: { role },
                 ...options,
-            });
-        }),
+            })
+        )
     );
 }
 
@@ -39,13 +36,13 @@ async function findAll(options = {}) {
             {
                 model: User,
                 as: 'users',
-                attributes: ['id', [literal(`"users"."name" || ' ' || "users"."surname"`), 'fullName']],
+                attributes: ['id', 'uuid', [literal(`"users"."name" || ' ' || "users"."surname"`), 'fullName']],
             },
             { model: Treatment, as: 'treatments' },
             {
                 model: Patient,
                 as: 'patient',
-                attributes: ['id', [literal(`"patient"."name" || ' ' || "patient"."surname"`), 'fullName']],
+                attributes: ['id', 'uuid', [literal(`"patient"."name" || ' ' || "patient"."surname"`), 'fullName']],
             },
         ],
         ...options,
@@ -61,9 +58,23 @@ async function findByUuid(uuid, options = {}) {
         where: { uuid },
         include: [
             { model: Treatment, as: 'treatments' },
-            { model: User, as: 'users' },
+            {
+                model: User,
+                as: 'users',
+                through: {
+                    as: 'assignment',
+                    attributes: ['role', 'assignedAt'],
+                },
+            },
             { model: Patient, as: 'patient' },
-            { model: Appointment, as: 'appointment' },
+            {
+                model: Appointment,
+                as: 'appointment',
+                include: [
+                    { model: User, as: 'user' },
+                    { model: Patient, as: 'patient' },
+                ],
+            },
         ],
         ...options,
     });
@@ -165,6 +176,23 @@ async function updateRecordStatusByUuid(uuid, status, options = {}) {
     );
 }
 
+async function updateResolvedAt(uuid, resolvedAt, options = {}) {
+    return await Diagnosis.update(
+        { resolvedAt },
+        {
+            where: { uuid },
+            ...options,
+        },
+    );
+}
+
+async function updateByUuid(uuid, data, options = {}) {
+    return await Diagnosis.update(data, {
+        where: { uuid },
+        ...options,
+    });
+}
+
 module.exports = {
     create,
     addUser,
@@ -179,4 +207,6 @@ module.exports = {
 
     updateClinicalStatusByUuid,
     updateRecordStatusByUuid,
+    updateResolvedAt,
+    updateByUuid,
 };

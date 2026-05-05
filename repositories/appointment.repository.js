@@ -16,12 +16,12 @@ async function findAll(options = {}) {
             {
                 model: User,
                 as: 'user',
-                attributes: ['id', [literal(`"user"."name" || ' ' || "user"."surname"`), 'fullName']],
+                attributes: ['id', 'uuid', [literal(`"user"."name" || ' ' || "user"."surname"`), 'fullName']],
             },
             {
                 model: Patient,
                 as: 'patient',
-                attributes: ['id', [literal(`"patient"."name" || ' ' || "patient"."surname"`), 'fullName']],
+                attributes: ['id', 'uuid', [literal(`"patient"."name" || ' ' || "patient"."surname"`), 'fullName']],
             },
         ],
         raw: true,
@@ -166,6 +166,16 @@ async function updateByUuid(uuid, data, options = {}) {
     });
 }
 
+async function updateEndTime(uuid, endTime, options = {}) {
+    return await Appointment.update(
+        { endTime },
+        {
+            where: { uuid },
+            ...options,
+        },
+    );
+}
+
 module.exports = {
     create,
 
@@ -178,4 +188,5 @@ module.exports = {
     hasActiveAppointmentsByPatientId,
     findById,
     updateByUuid,
+    updateEndTime,
 };

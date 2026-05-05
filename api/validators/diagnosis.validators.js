@@ -21,7 +21,28 @@ const createDiagnosisRules = [
 
     check('users').isArray({ min: 1 }).withMessage('Debe haber al menos un profesional'),
 
-    check('patient').notEmpty().withMessage('El paciente es obligatorio').isInt().withMessage('Paciente inválido'),
+    check('patient.id').notEmpty().withMessage('El paciente es obligatorio').isInt().withMessage('Paciente inválido'),
+
+    check('description').optional().isLength({ max: 1000 }),
+
+    check('notes').optional().isLength({ max: 2000 }),
+
+    check('appointment.id').optional().isInt().withMessage('Cita inválida'),
+];
+
+const editDiagnosisRules = [
+    check('name')
+        .notEmpty()
+        .withMessage('El nombre es obligatorio')
+        .isLength({ max: 100 })
+        .withMessage('El nombre no puede superar los 100 caracteres'),
+    check('severity')
+        .notEmpty()
+        .withMessage('La gravedad es obligatoria')
+        .isIn(['LOW', 'MODERATE', 'HIGH', 'CRITICAL'])
+        .withMessage('La gravedad del diagnosis debe ser baja, moderada, alta, o crítica'),
+        
+    check('users').isArray({ min: 1 }).withMessage('Debe haber al menos un profesional'),
 
     check('description').optional().isLength({ max: 1000 }),
 
@@ -32,4 +53,5 @@ const createDiagnosisRules = [
 
 module.exports = {
     createDiagnosisRules,
+    editDiagnosisRules
 };

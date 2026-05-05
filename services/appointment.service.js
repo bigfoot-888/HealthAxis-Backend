@@ -124,12 +124,6 @@ async function completeAppointmentWithClinicalData(uuid, clinicalData) {
 
         await AppointmentRepository.updateByUuid(appointment.uuid, { status: 'COMPLETED' }, { transaction: t });
 
-        // await createPrimaryFlowEvent({
-        //     patientId: appointment.patientId,
-        //     type: 'CLINICAL_DATA',
-        //     title: 'Datos clínicos registrados y cita completada',
-        //     transaction: t,
-        // });
         return {
             diagnosis,
             treatments,
@@ -266,10 +260,18 @@ async function updateAppointmentStatus(uuid, payload, userId) {
 
         const previousStatus = appointment.status;
 
+        if (previousStatus === 'COMPLETED') {
+            throw new ConflictError('No se puede modificar el estado de una cita completada');
+        }
+
         const [count] = await AppointmentRepository.updateByUuid(uuid, payload, {transaction: t});
 
         if (count === 0) {
             throw new NotFoundError('Error, cita no encontrada', { uuid });
+        }
+
+        if (payload.status === 'COMPLETED') {
+            await AppointmentRepository.updateEndTime(uuid, new Date(), { transaction: t });
         }
 
         if (payload.status !== previousStatus) {

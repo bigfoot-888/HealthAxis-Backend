@@ -45,11 +45,6 @@ const Treatment = sequelize.define(
             defaultValue: 'VALID',
             allowNull: false,
         },
-        devisedAt: {
-            type: DataTypes.DATE,
-            allowNull: false,
-            defaultValue: DataTypes.NOW,
-        },
         resolvedAt: {
             type: DataTypes.DATE,
             allowNull: true,

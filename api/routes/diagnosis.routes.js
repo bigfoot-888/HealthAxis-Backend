@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 const diagnosisController = require('../controllers/diagnosis.controller');
-const { createDiagnosisRules } = require('../validators/diagnosis.validators');
+const { createDiagnosisRules, editDiagnosisRules } = require('../validators/diagnosis.validators');
 const validateRequest = require('../../middlewares/request-validator.middleware');
 const asyncHandler = require('../../middlewares/async-handler.middleware');
 const { validateUuidParam } = require('../../middlewares/valid-uuid.middleware');
@@ -23,6 +23,14 @@ router.get('/:uuid', requirePermission("diagnosis:read"), validateUuidParam('uui
 router.get('/:uuid/plain', requirePermission("diagnosis:read"), validateUuidParam('uuid'), asyncHandler(diagnosisController.getDiagnosisPlainController));
 
 // ===== UPDATE =====
+
+router.put(
+    '/:uuid',
+    requirePermission("diagnosis:update"), 
+    editDiagnosisRules,
+    validateUuidParam('uuid'),
+    asyncHandler(diagnosisController.updateDiagnosisController),
+)
 router.patch(
     '/:uuid/clinical-status',
     requirePermission("diagnosis:update"), 

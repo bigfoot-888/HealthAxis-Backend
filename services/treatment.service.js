@@ -4,9 +4,12 @@ const PatientRepository = require('../repositories/patient.repository');
 const DiagnosisRepository = require('../repositories/diagnosis.repository');
 const AppointmentRepository = require('../repositories/appointment.repository');
 const AuditLogRepository = require('../repositories/audit-log.repository');
+const UserRepository = require('../repositories/user.repository');
 const NotFoundError = require('../errors/NotFoundError');
+const ConflictError = require('../errors/ConflictError');
 const { throwIfNotExists } = require('../utils/error-utils');
-const {createPrimaryFlowEvent} = require('../utils/flow-event')
+const {createPrimaryFlowEvent} = require('../utils/flow-event');
+const { getChanges } = require('../utils/log.utils');
 
 /**
  * Creates a new treatment and associates users and diagnoses within a single transaction.
@@ -135,20 +138,28 @@ async function searchTreatments({ patient, name }) {
  * @returns {Promise<number>} Number of affected rows
  * @throws {NotFoundError} If no treatment was updated
  */
-async function updateTreatmentClinicalStatus(uuid, newClinicalStatus, userId) {
+async function updateTreatmentClinicalStatus(uuid, clinicalStatus, userId) {
     return await sequelize.transaction(async (t) => {
         const treatment = await TreatmentRepository.findByUuidPlain(uuid, { transaction: t });
         throwIfNotExists(treatment, 'tratamiento', { uuid });
 
         const previousClinicalStatus = treatment.clinicalStatus;
 
-        const [count] = await TreatmentRepository.updateClinicalStatus(uuid, newClinicalStatus, { transaction: t });
+        if (previousClinicalStatus === 'COMPLETED' || previousClinicalStatus === 'GIVEN') {
+            throw new ConflictError('No se puede modificar un tratamiento resuelto');
+        }
+
+        const [count] = await TreatmentRepository.updateClinicalStatus(uuid, clinicalStatus, { transaction: t });
 
         if (count === 0) {
             throw new NotFoundError('Error, no se ha podido editar el estado clínico del tratamiento', { uuid });
         }
 
-        if (newClinicalStatus !== previousClinicalStatus) {
+        if (clinicalStatus === 'COMPLETED' || clinicalStatus === 'GIVEN') {
+            await TreatmentRepository.updateResolvedAt(uuid, new Date(), { transaction: t });
+        }
+
+        if (clinicalStatus !== previousClinicalStatus) {
             await AuditLogRepository.createAuditLog({
                 action: 'CLINICAL_STATUS_CHANGED',
                 entityType: 'TREATMENT',
@@ -157,7 +168,7 @@ async function updateTreatmentClinicalStatus(uuid, newClinicalStatus, userId) {
                 patientId: treatment.patientId,
                 meta: {
                     previousClinicalStatus,
-                    newClinicalStatus,
+                    clinicalStatus,
                 },
                 transaction: t,
             });
@@ -165,10 +176,10 @@ async function updateTreatmentClinicalStatus(uuid, newClinicalStatus, userId) {
 
         const relevantStatuses = ['COMPLETED', 'DISCONTINUED'];
 
-        if (newClinicalStatus !== previousClinicalStatus && relevantStatuses.includes(newClinicalStatus)) {
+        if (clinicalStatus !== previousClinicalStatus && relevantStatuses.includes(clinicalStatus)) {
             let title = '';
 
-            switch (newClinicalStatus) {
+            switch (clinicalStatus) {
                 case 'COMPLETED':
                     title = 'Tratamiento completado';
                     break;
@@ -231,6 +242,80 @@ async function updateTreatmentStatus(uuid, newStatus, userId) {
     });
 }
 
+
+/**
+ * Updates treatment data by UUID.
+ *
+ * @param {string} uuid
+ * @param {Object} treatmentData
+ * @param {Array<{userId: number, role: string}>} users
+ * @param {string} userId
+ * @returns {Promise<number>} Number of affected rows
+ */
+async function updateTreatment(uuid, treatmentData, users, userId) {
+    return await sequelize.transaction(async (t) => {
+        const treatment = await TreatmentRepository.findByUuidPlain(uuid, { transaction: t });
+        throwIfNotExists(treatment, 'tratamiento', { uuid });
+
+        const changes = getChanges(treatment, treatmentData, {
+            ignoreFields: ['updatedAt'],
+        });
+
+        if (treatmentData.appointmentId) {
+            const appointment = await AppointmentRepository.findById(treatmentData.appointmentId, { transaction: t });
+            throwIfNotExists(appointment, 'cita', { id: treatmentData.appointmentId });
+
+            if (appointment.patientId !== treatment.patientId) {
+                throw new ValidationError('La cita no pertenece al paciente');
+            }
+        }
+
+        if (!users || users.length === 0) {
+            throw new ValidationError('Debe haber al menos un profesional');
+        }
+
+        const userIds = users.map((u) => u.userId);
+        if (new Set(userIds).size !== userIds.length) {
+            throw new ValidationError('No puede haber usuarios duplicados');
+        }
+
+        for (const u of users) {
+            const user = await UserRepository.findById(u.userId, { transaction: t });
+            throwIfNotExists(user, 'usuario');
+        }
+
+        const validRoles = ['AUTHOR', 'REVIEWER', 'VALIDATOR', 'CONTRIBUTOR'];
+
+        for (const u of users) {
+            if (!validRoles.includes(u.role)) {
+                throw new ValidationError(`Rol inválido: ${u.role}`);
+            }
+        }
+
+        const [count] = await TreatmentRepository.updateByUuid(uuid, treatmentData, { transaction: t });
+
+        if (count === 0) {
+            throw new NotFoundError('No se ha podido actualizar el tratamiento', { uuid });
+        }
+
+        await TreatmentRepository.associateUsers(treatment, users, { transaction: t });
+        
+        if (Object.keys(changes).length > 0) {
+            await AuditLogRepository.createAuditLog({
+                action: 'UPDATED',
+                entityType: 'TREATMENT',
+                entityId: treatment.id,
+                userId,
+                patientId: treatment.patientId,
+                meta: { changes },
+                transaction: t,
+            });
+        }
+
+        return count;
+    });
+}
+
 module.exports = {
     createTreatment,
     getTreatments,
@@ -239,4 +324,5 @@ module.exports = {
     searchTreatments,
     updateTreatmentClinicalStatus,
     updateTreatmentStatus,
+    updateTreatment,
 };

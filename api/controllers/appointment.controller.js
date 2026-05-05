@@ -74,8 +74,6 @@ async function updateAppointmentController(req, res) {
     res.status(200).json(updatedAppointment);
 }
 
-// ===== STATE =====
-
 async function updateAppointmentStatusController(req, res) {
     const { uuid } = req.params;
     const { status, notes } = req.body;

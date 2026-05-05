@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 const treatmentController = require('../controllers/treatment.controller');
-const { createTreatmentRules } = require('../validators/treatment.validators'); 
+const { createTreatmentRules, editTreatmentRules } = require('../validators/treatment.validators'); 
 const validateRequest = require('../../middlewares/request-validator.middleware');
 const asyncHandler = require('../../middlewares/async-handler.middleware');
 
@@ -16,6 +16,8 @@ router.post('/', requirePermission("treatment:create"), createTreatmentRules, va
 router.get('/', requirePermission("treatment:read"), asyncHandler(treatmentController.getTreatmentsController));
 router.get('/:uuid', requirePermission("treatment:read"), asyncHandler(treatmentController.getTreatmentController));
 router.get('/:uuid/plain', requirePermission("treatment:read"), asyncHandler(treatmentController.getTreatmentPlainController));
+
+router.put('/:uuid', requirePermission("treatment:update"), editTreatmentRules, asyncHandler(treatmentController.updateTreatmentController));
 
 router.patch('/:uuid/clinical-status', requirePermission("treatment:update"), asyncHandler(treatmentController.updateTreatmentClinicalStatusController));
 router.patch('/:uuid/status', requirePermission("treatment:update"), asyncHandler(treatmentController.updateTreatmentStatusController));

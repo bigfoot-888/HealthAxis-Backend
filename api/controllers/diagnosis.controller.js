@@ -69,6 +69,25 @@ async function updateDiagnosisRecordStatusController(req, res) {
     res.status(200).json({ updated });
 }
 
+async function updateDiagnosisController(req, res) {
+    const { uuid } = req.params;
+    const { appointment, users = [], ...diagnosisData } = req.body;
+
+    const payload = {
+        ...diagnosisData,
+        appointmentId: appointment?.id,
+    };
+
+    const mappedUsers = users.map((p) => {
+        if (!p.user.id) {
+            throw new ValidationError('Usuario inválido en participantes');
+        }
+        return { userId: p.user.id, role: p.role };
+    });
+
+    const updatedDiagnosis = await diagnosisService.updateDiagnosis(uuid, payload, mappedUsers, req.user.id);
+    res.status(200).json(updatedDiagnosis);
+}
 module.exports = {
     createDiagnosisController,
 
@@ -79,4 +98,5 @@ module.exports = {
 
     updateDiagnosisClinicalStatusController,
     updateDiagnosisRecordStatusController,
+    updateDiagnosisController,
 };

@@ -12,13 +12,12 @@ async function createTreatmentController(req, res) {
         diagnosisId: diagnosis?.id
     };
 
-    const mappedUsers = users.map(({ user, role, assignedAt }) => ({
-        user: {
-            id: user.id,
-            role,
-            ...(assignedAt && { assignedAt }),
-        },
-    }));
+    const mappedUsers = users.map((p) => {
+        if (!p.user.id) {
+            throw new ValidationError('Usuario inválido en participantes');
+        }
+        return { userId: p.user.id, role: p.role };
+    });
 
     const treatment = await treatmentService.createTreatment(payload, mappedUsers, req.user.id);
 
@@ -62,6 +61,27 @@ async function updateTreatmentStatusController(req, res) {
     res.status(200).json({ updated });
 }
 
+
+async function updateTreatmentController(req, res) {
+    const { uuid } = req.params;
+    const { appointment, users = [], ...treatmentData } = req.body;
+
+    const payload = {
+        ...treatmentData,
+        appointmentId: appointment?.id,
+    };
+
+    const mappedUsers = users.map((p) => {
+        if (!p.user.id) {
+            throw new ValidationError('Usuario inválido en participantes');
+        }
+        return { userId: p.user.id, role: p.role };
+    });
+
+    const updatedTreatment = await treatmentService.updateTreatment(uuid, payload, mappedUsers, req.user.id);
+    res.status(200).json(updatedTreatment);
+}
+
 module.exports = {
     createTreatmentController,
     getTreatmentsController,
@@ -69,4 +89,5 @@ module.exports = {
     getTreatmentPlainController,
     updateTreatmentClinicalStatusController,
     updateTreatmentStatusController,
+    updateTreatmentController
 };

@@ -5,12 +5,16 @@ const DiagnosisRepository = require('../repositories/diagnosis.repository');
 const AppointmentRepository = require('../repositories/appointment.repository');
 const PatientRepository = require('../repositories/patient.repository');
 const AuditLogRepository = require('../repositories/audit-log.repository');
+const UserRepository = require('../repositories/user.repository');
 
 const NotFoundError = require('../errors/NotFoundError');
 const ValidationError = require('../errors/ValidationError');
+const ConflictError = require('../errors/ConflictError')
 const { throwIfNotExists } = require('../utils/error-utils');
 
 const { createPrimaryFlowEvent } = require('../utils/flow-event');
+
+const { getChanges } = require('../utils/log.utils');
 
 // ===== CREATE =====
 
@@ -62,16 +66,6 @@ async function createDiagnosis(diagnosisData, users = [], userId) {
         for (const u of users) {
             if (!validRoles.includes(u.role)) {
                 throw new ValidationError(`Rol inválido: ${u.role}`);
-            }
-        }
-
-        // Date inconsistencies
-        if (diagnosisData.resolvedAt && diagnosisData.diagnosedAt) {
-            if (new Date(diagnosisData.resolvedAt) < new Date(diagnosisData.diagnosedAt)) {
-                throw new ValidationError('La fecha de resolución no puede ser anterior al diagnóstico', {
-                    resolvedAt: diagnosisData.resolvedAt,
-                    diagnosedAt: diagnosisData.diagnosedAt,
-                });
             }
         }
 
@@ -205,12 +199,23 @@ async function updateDiagnosisClinicalStatus(uuid, clinicalStatus, userId) {
 
         const previousClinicalStatus = diagnosis.clinicalStatus;
 
-        const [count] = await DiagnosisRepository.updateClinicalStatusByUuid(uuid, clinicalStatus, { transaction: t });
+        // Can't change the clinical status if it is resolved
+        if (previousClinicalStatus === 'RESOLVED') {
+            throw new ConflictError('No se puede modificar un diagnóstico resuelto');
+        }
 
+        // Update the status, throw error if no row was updated
+        const [count] = await DiagnosisRepository.updateClinicalStatusByUuid(uuid, clinicalStatus, { transaction: t });
         if (count === 0) {
             throw new NotFoundError('No se ha podido actualizar el estado clínico del diagnóstico', { uuid });
         }
 
+        // If the new status is resolved, then update the resolvedAt column
+        if (clinicalStatus === 'RESOLVED') {
+            await DiagnosisRepository.updateResolvedAt(uuid, new Date(), { transaction: t });
+        }
+
+        // If the status actually changed, create new audit log
         if (clinicalStatus !== previousClinicalStatus) {
             await AuditLogRepository.createAuditLog({
                 action: 'CLINICAL_STATUS_CHANGED',
@@ -293,6 +298,73 @@ async function updateDiagnosisRecordStatus(uuid, status, userId) {
         return count;
     });
 }
+
+/**
+ * Updates diagnosis data by UUID.
+ *
+ * @param {string} uuid
+ * @param {Object} diagnosisData
+ * @param {Array<{userId: number, role: string}>} users
+ * @param {string} userId
+ * @returns {Promise<number>} Number of affected rows
+ */
+async function updateDiagnosis(uuid, diagnosisData, users, userId) {
+    return await sequelize.transaction(async (t) => {
+        const diagnosis = await DiagnosisRepository.findByUuidPlain(uuid, { transaction: t });
+        throwIfNotExists(diagnosis, 'diagnóstico', { uuid });
+
+        const changes = getChanges(diagnosis, diagnosisData, { ignoreFields: ['updatedAt'] });
+
+        if (diagnosisData.appointmentId) {
+            const appointment = await AppointmentRepository.findById(diagnosisData.appointmentId, { transaction: t });
+            throwIfNotExists(appointment, 'cita', { id: diagnosisData.appointmentId });
+            if (appointment.patientId !== diagnosis.patientId)
+                throw new ValidationError('La cita no pertenece al paciente');
+        }
+
+        if (!users || users.length === 0) throw new ValidationError('Debe haber al menos un profesional');
+
+        const userIds = users.map((u) => u.userId);
+
+        if (new Set(userIds).size !== userIds.length) throw new ValidationError('No puede haber usuarios duplicados');
+
+        for (const u of users) {
+            const user = await UserRepository.findById(u.userId, { transaction: t });
+            throwIfNotExists(user, 'usuario');
+        }
+
+        const validRoles = ['AUTHOR', 'REVIEWER', 'VALIDATOR', 'CONTRIBUTOR'];
+
+        for (const u of users) {
+            if (!validRoles.includes(u.role)) {
+                throw new ValidationError(`Rol inválido: ${u.role}`);
+            }
+        }
+
+        const [count] = await DiagnosisRepository.updateByUuid(uuid, diagnosisData, { transaction: t });
+
+        if (count === 0) {
+            throw new NotFoundError('No se ha podido actualizar el diagnóstico', { uuid });
+        }
+
+        await DiagnosisRepository.associateUsers(diagnosis, users, { transaction: t });
+
+        if (Object.keys(changes).length > 0) {
+            await AuditLogRepository.createAuditLog({
+                action: 'UPDATED',
+                entityType: 'DIAGNOSIS',
+                entityId: diagnosis.id,
+                userId,
+                patientId: diagnosis.patientId,
+                meta: { changes },
+                transaction: t,
+            });
+        }
+
+        return count;
+    });
+}
+
 module.exports = {
     createDiagnosis,
 
@@ -305,4 +377,5 @@ module.exports = {
 
     updateDiagnosisClinicalStatus,
     updateDiagnosisRecordStatus,
+    updateDiagnosis,
 };
