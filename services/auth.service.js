@@ -63,6 +63,7 @@ async function createSession(req, user) {
 function sanitizeUser(user) {
     return {
         id: user.id,
+        uuid: user.uuid,
         email: user.email,
         role: user.role,
         fullName: user.name + " " + user.surname,

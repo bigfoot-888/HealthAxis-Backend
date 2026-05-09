@@ -6,7 +6,6 @@ async function getPatient(req, res) {
     const { uuid } = req.params;
 
     const patient = await patientService.getPatient(uuid);
-    console.log(patient)
     const fhirPatient = mapPatientToFhir(patient);
 
     res.json(fhirPatient);

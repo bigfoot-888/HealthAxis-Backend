@@ -30,6 +30,7 @@ router.post(
 );
 
 router.get('/', requirePermission("appointment:read"), asyncHandler(appointmentController.getAppointmentsController));
+router.get('/me', requirePermission("appointment:read"), asyncHandler(appointmentController.getMyAppointmentsController));
 router.get('/filtered', requirePermission("appointment:read"), asyncHandler(appointmentController.getFilteredAppointmentsController));
 router.get('/:uuid', requirePermission("appointment:read"), validateUuidParam('uuid'), asyncHandler(appointmentController.getAppointmentController));
 router.get(

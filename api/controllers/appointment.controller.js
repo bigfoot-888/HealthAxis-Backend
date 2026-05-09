@@ -32,6 +32,16 @@ async function getAppointmentsController(req, res) {
     res.status(200).json(appointments);
 }
 
+async function getMyAppointmentsController(req, res) {
+    const userId = req.user.id;
+
+    const appointments = await appointmentService.getAppointments({
+        ...req.query,
+        userId,
+    });
+    res.status(200).json(appointments);
+}
+
 async function getFilteredAppointmentsController(req, res) {
     const query = req.query.query || '';
     const limit = parseInt(req.query.limit, 10) || 20;
@@ -93,6 +103,7 @@ module.exports = {
     getFilteredAppointmentsController,
     getAppointmentController,
     getAppointmentPlainController,
+    getMyAppointmentsController,
 
     updateAppointmentController,
     updateAppointmentStatusController,
