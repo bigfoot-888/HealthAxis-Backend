@@ -9,7 +9,7 @@ const { throwIfNotExists } = require('../utils/error-utils');
 
 const sequelize = require('../config/database');
 
-// Map config → Sequelize model
+// Map config to sequelize model
 const ENTITY_MAP = {
     Patient,
     Appointment,
@@ -17,7 +17,12 @@ const ENTITY_MAP = {
     Treatment,
 };
 
-// ===== DASHBOARD =====
+const GROUP_BY_OPTIONS = {
+    Patient: ['createdAt', 'status'],
+    Appointment: ['startTime', 'status', 'createdAt',],
+    Diagnosis: ['createdAt', 'severity', 'clinicalStatus'],
+    Treatment: ['createdAt', 'clinicalStatus', 'createdAt'],
+};
 
 /**
  * Retrieves and resolves the dashboard for a user.
@@ -84,10 +89,47 @@ async function updateLayout(userId, layout) {
     };
 }
 
-function validateKpiComponentInput(componentData) {
+function validateComponentInput(componentData) {
     const allowedEntities = ['Patient', 'Appointment', 'Diagnosis', 'Treatment'];
     const allowedAggregation = ['COUNT'];
     const allowedDates = ['today', 'last_7_days'];
+    const allowedTypes = ['KPI', 'LINE_CHART', 'BAR_CHART'];
+
+    const isChart = componentData.type === 'LINE_CHART' || componentData.type === 'BAR_CHART';
+    const isBarChart = componentData.type === 'BAR_CHART';
+
+    const DATE_GROUP_FIELDS = {
+        Patient: ['createdAt'],
+        Appointment: ['startTime'],
+        Diagnosis: ['createdAt'],
+        Treatment: ['createdAt'],
+    };
+
+    const allowedTimeGrains = ['day', 'week', 'month'];
+
+    if (isBarChart && !componentData.groupBy) {
+        throw new ValidationError('Los gráficos de barras requieren un campo de agrupación');
+    }
+
+    if (componentData.timeGrain && !allowedTimeGrains.includes(componentData.timeGrain)) {
+        throw new ValidationError('Intervalo temporal no soportado');
+    }
+
+    if (isChart && !componentData.groupBy) {
+        throw new ValidationError('Los gráficos requieren un campo de agrupación');
+    }
+
+    if (!allowedTypes.includes(componentData.type)) {
+        throw new ValidationError('Tipo de componente no soportado', {
+            type: componentData.type,
+        });
+    }
+
+    if (componentData.groupBy && !GROUP_BY_OPTIONS[componentData.entity]?.includes(componentData.groupBy)) {
+        throw new ValidationError('Campo de agrupación no soportado', {
+            groupBy: componentData.groupBy,
+        });
+    }
 
     if (!componentData.title?.trim()) {
         throw new ValidationError('El título es obligatorio');
@@ -129,20 +171,23 @@ async function createComponent(userId, componentData) {
     const dashboard = await DashboardRepository.findByUserId(userId);
     const resolvedDashboard = throwIfNotExists(dashboard, 'dashboard', { userId });
 
-    validateKpiComponentInput(componentData);
+    validateComponentInput(componentData);
 
     const nextY = getNextAvailableY(resolvedDashboard.components);
 
+    const isChart = componentData.type === 'LINE_CHART' || componentData.type === 'BAR_CHART';
+
     const newComponent = await DashboardRepository.createComponent({
         dashboardId: resolvedDashboard.id,
+        type: componentData.type || 'KPI',
         title: componentData.title,
-        type: 'KPI',
         position: {
             x: 0,
             y: nextY,
-            w: 2,
-            h: 2,
+            w: isChart ? 6 : 2,
+            h: isChart ? 4 : 2,
         },
+
         config: {
             visuals: componentData.visuals || { color: 'primary.main' },
             query: {
@@ -150,14 +195,14 @@ async function createComponent(userId, componentData) {
                 aggregation: componentData.aggregation || 'COUNT',
                 targetColumn: componentData.targetColumn || 'id',
                 filters: componentData.filters || {},
+                groupBy: componentData.groupBy,
+                timeGrain: componentData.timeGrain,
             },
         },
     });
 
     return newComponent;
 }
-
-// ===== COMPONENT RESOLUTION =====
 
 /**
  * Resolves a dashboard component into visualization-ready data.
@@ -182,11 +227,10 @@ async function resolveComponent(component, userId) {
         source: component.source,
         position: component.position || { x: 0, y: 0, w: 2, h: 2 },
         config: config.visuals || {},
+        query: config.query || null,
         data,
     };
 }
-
-// ===== QUERY ENGINE =====
 
 /**
  * Executes a dynamic query definition.

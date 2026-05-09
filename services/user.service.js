@@ -29,182 +29,174 @@ const { throwIfNotExists } = require('../utils/error-utils');
  *
  * @param {Object} userData - Core user data (name, email, password, etc.)
  * @param {Array<string>} roles - Array of role names
- * @param {number} [userId=1] - ID of the user performing the action
  * @returns {Promise<Object>} Created user instance
  * @throws {ConflictError} If email already exists
  */
-async function createUser(userData, roles = [], userId = 1) {
-    try {
-        return await sequelize.transaction(async (t) => {
-            const hashed = await hashPassword(userData.password);
+async function createUser(userData, roles = []) {
+    return await sequelize.transaction(async (t) => {
+        const hashed = await hashPassword(userData.password);
 
-            const user = await UserRepository.create(
-                {
-                    ...userData,
-                    uuid: uuidv4(),
-                    password: hashed,
+        const userExists = await UserRepository.findByEmail(userData.email, { transaction: t });
+        if (userExists) throw new ConflictError('Error, el correo ya existe', { email: userData.email });
+
+        const user = await UserRepository.create(
+            {
+                ...userData,
+                uuid: uuidv4(),
+                password: hashed,
+            },
+            { transaction: t },
+        );
+
+        const roleInstances = await Promise.all(
+            roles.map((roleName) => UserRepository.findOrCreateRole(roleName, { transaction: t })),
+        );
+
+        await UserRepository.addRoles(user, roleInstances, { transaction: t });
+
+        const dashboard = await UserRepository.createDashboard(user.id, { transaction: t });
+
+        const defaultComponents = [
+            // ===== KPIs =====
+            {
+                title: 'Total Pacientes',
+                type: 'KPI',
+                position: { x: 0, y: 0, w: 2, h: 2 },
+                source: 'SYSTEM',
+
+                config: {
+                    visuals: { color: 'primary.main' },
+                    query: { entity: 'Patient', aggregation: 'COUNT', targetColumn: 'id' },
                 },
-                { transaction: t },
-            );
+            },
+            {
+                title: 'Pacientes Activos',
+                type: 'KPI',
+                position: { x: 2, y: 0, w: 2, h: 2 },
+                source: 'SYSTEM',
 
-            const roleInstances = await Promise.all(
-                roles.map((roleName) => UserRepository.findOrCreateRole(roleName, { transaction: t })),
-            );
-
-            await UserRepository.addRoles(user, roleInstances, { transaction: t });
-
-            const dashboard = await UserRepository.createDashboard(user.id, { transaction: t });
-
-            const defaultComponents = [
-                // ===== KPIs =====
-                {
-                    title: 'Total Pacientes',
-                    type: 'KPI',
-                    position: { x: 0, y: 0, w: 2, h: 2 },
-                    source: 'SYSTEM',
-
-                    config: {
-                        visuals: { color: 'primary.main' },
-                        query: { entity: 'Patient', aggregation: 'COUNT', targetColumn: 'id' },
+                config: {
+                    visuals: { color: 'success.main' },
+                    query: {
+                        entity: 'Patient',
+                        aggregation: 'COUNT',
+                        targetColumn: 'id',
+                        filters: { status: 'ACTIVE' },
                     },
                 },
-                {
-                    title: 'Pacientes Activos',
-                    type: 'KPI',
-                    position: { x: 2, y: 0, w: 2, h: 2 },
-                    source: 'SYSTEM',
+            },
+            {
+                title: 'Citas Hoy',
+                type: 'KPI',
+                position: { x: 4, y: 0, w: 2, h: 2 },
+                source: 'SYSTEM',
 
-                    config: {
-                        visuals: { color: 'success.main' },
-                        query: {
-                            entity: 'Patient',
-                            aggregation: 'COUNT',
-                            targetColumn: 'id',
-                            filters: { status: 'ACTIVE' },
-                        },
+                config: {
+                    visuals: { color: 'info.main' },
+                    query: {
+                        entity: 'Appointment',
+                        aggregation: 'COUNT',
+                        targetColumn: 'id',
+                        filters: { date: 'today' },
                     },
                 },
-                {
-                    title: 'Citas Hoy',
-                    type: 'KPI',
-                    position: { x: 4, y: 0, w: 2, h: 2 },
-                    source: 'SYSTEM',
+            },
+            {
+                title: 'Citas en espera',
+                type: 'KPI',
+                position: { x: 6, y: 0, w: 2, h: 2 },
+                source: 'SYSTEM',
 
-                    config: {
-                        visuals: { color: 'info.main' },
-                        query: {
-                            entity: 'Appointment',
-                            aggregation: 'COUNT',
-                            targetColumn: 'id',
-                            filters: { date: 'today' },
-                        },
+                config: {
+                    visuals: { color: 'warning.main' },
+                    query: {
+                        entity: 'Appointment',
+                        aggregation: 'COUNT',
+                        targetColumn: 'id',
+                        filters: { status: 'CHECKED_IN' },
                     },
                 },
-                {
-                    title: 'Citas en espera',
-                    type: 'KPI',
-                    position: { x: 6, y: 0, w: 2, h: 2 },
-                    source: 'SYSTEM',
+            },
 
-                    config: {
-                        visuals: { color: 'warning.main' },
-                        query: {
-                            entity: 'Appointment',
-                            aggregation: 'COUNT',
-                            targetColumn: 'id',
-                            filters: { status: 'CHECKED_IN' },
-                        },
+            {
+                title: 'Pacientes a lo largo del tiempo',
+                type: 'LINE_CHART',
+                position: { x: 0, y: 2, w: 5, h: 3 },
+                source: 'SYSTEM',
+
+                config: {
+                    visuals: {
+                        xAxisKey: 'x',
+                        yAxisKey: 'y',
+                        yAxisLabel: 'Pacientes',
+                        tooltipLabel: 'Pacientes',
+                    },
+                    query: {
+                        entity: 'Patient',
+                        aggregation: 'COUNT',
+                        targetColumn: 'id',
+                        groupBy: 'createdAt',
+                        timeGrain: 'week',
                     },
                 },
+            },
+            {
+                title: 'Próximas Citas',
+                type: 'LIST',
+                position: { x: 5, y: 2, w: 3, h: 3 },
+                source: 'SYSTEM',
 
-                // ===== CHART + LIST =====
-                {
-                    title: 'Pacientes a lo largo del tiempo',
-                    type: 'LINE_CHART',
-                    position: { x: 0, y: 2, w: 5, h: 3 },
-                    source: 'SYSTEM',
-
-                    config: {
-                        visuals: {
-                            xAxisKey: 'x',
-                            yAxisKey: 'y',
-                            yAxisLabel: 'Pacientes',
-                            tooltipLabel: 'Pacientes',
+                config: {
+                    visuals: {
+                        columns: ['patientId', 'startTime', 'status'],
+                    },
+                    query: {
+                        type: 'LIST',
+                        entity: 'Appointment',
+                        scope: 'SELF',
+                        filters: { upcoming: true },
+                        orderBy: {
+                            field: 'startTime',
+                            direction: 'ASC',
                         },
-                        query: {
-                            entity: 'Patient',
-                            aggregation: 'COUNT',
-                            targetColumn: 'id',
-                            groupBy: 'createdAt',
-                            timeGrain: 'week',
-                        },
+                        limit: 5,
                     },
                 },
-                {
-                    title: 'Próximas Citas',
-                    type: 'LIST',
-                    position: { x: 5, y: 2, w: 3, h: 3 },
-                    source: 'SYSTEM',
+            },
 
-                    config: {
-                        visuals: {
-                            columns: ['patientId', 'startTime', 'status'],
-                        },
-                        query: {
-                            type: 'LIST',
-                            entity: 'Appointment',
-                            scope: 'SELF',
-                            filters: { upcoming: true },
-                            orderBy: {
-                                field: 'startTime',
-                                direction: 'ASC',
-                            },
-                            limit: 5,
-                        },
+            {
+                title: 'Citas a lo largo del tiempo',
+                type: 'LINE_CHART',
+                position: { x: 0, y: 5, w: 8, h: 3 },
+                source: 'SYSTEM',
+                config: {
+                    visuals: {
+                        xAxisKey: 'x',
+                        yAxisKey: 'y',
+                        yAxisLabel: 'Citas',
+                        tooltipLabel: 'Citas',
+                    },
+                    query: {
+                        entity: 'Appointment',
+                        aggregation: 'COUNT',
+                        targetColumn: 'id',
+                        groupBy: 'startTime',
+                        timeGrain: 'week',
                     },
                 },
+            },
+        ];
 
-                {
-                    title: 'Citas a lo largo del tiempo',
-                    type: 'LINE_CHART',
-                    position: { x: 0, y: 5, w: 8, h: 3 },
-                    source: 'SYSTEM',
-                    config: {
-                        visuals: {
-                            xAxisKey: 'x',
-                            yAxisKey: 'y',
-                            yAxisLabel: 'Citas',
-                            tooltipLabel: 'Citas',
-                        },
-                        query: {
-                            entity: 'Appointment',
-                            aggregation: 'COUNT',
-                            targetColumn: 'id',
-                            groupBy: 'startTime',
-                            timeGrain: 'week',
-                        },
-                    },
-                },
-            ];
+        await UserRepository.bulkCreateDashboardComponents(
+            defaultComponents.map((component) => ({
+                ...component,
+                dashboardId: dashboard.id,
+            })),
+            { transaction: t },
+        );
 
-            await UserRepository.bulkCreateDashboardComponents(
-                defaultComponents.map((component) => ({
-                    ...component,
-                    dashboardId: dashboard.id,
-                })),
-                { transaction: t },
-            );
-
-            return user;
-        });
-    } catch (err) {
-        if (err.name === 'SequelizeUniqueConstraintError') {
-            throw new ConflictError('Error, email already exists', {
-                email: userData.email,
-            });
-        }
-        throw err;
-    }
+        return user;
+    });
 }
 
 /**
@@ -246,7 +238,6 @@ async function importUsers(users) {
  * @returns {Promise<Array<Object>>}
  */
 async function getUsers(query = {}) {
-    console.log('hola');
     const { agendaUuid } = query;
     const where = {};
     if (agendaUuid) {

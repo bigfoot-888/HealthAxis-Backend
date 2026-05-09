@@ -4,15 +4,15 @@ const AuthError = require('../errors/AuthError');
 
 async function login(data, req) {
     const { email, password } = data;
-
     const user = await UserRepository.findByEmail(email);
-    if (!user) {
-        throw new AuthError('Usuario no encontrado', 401);
-    }
+    
+    if (!user) throw new AuthError('Usuario no encontrado', 401);
+
+    if (user.status === 'INACTIVE') throw new AuthError('El usuario introducido está inactivo', 401);
+
     const valid = await verifyPassword(password, user.password);
-    if (!valid) {
-        throw new AuthError('Credenciales incorrectas', 401);
-    }
+    if (!valid) throw new AuthError('Credenciales incorrectas', 401);
+
     await createSession(req, user);
     return sanitizeUser(user);
 }
