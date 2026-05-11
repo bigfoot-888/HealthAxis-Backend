@@ -1,14 +1,19 @@
 jest.mock('@/repositories/treatment.repository', () => ({
     create: jest.fn(),
-    associateUsers: jest.fn(),
     findByUuidDetailed: jest.fn(),
     findByUuidPlain: jest.fn(),
     findAll: jest.fn(),
     updateClinicalStatus: jest.fn(),
     updateStatus: jest.fn(),
+    associateUsers: jest.fn(),
+    updateResolvedAt: jest.fn(), 
 }));
 
-jest.mock('@/repositories/patient.repository', () => ({
+jest.mock('@/utils/flow-event', () => ({
+  createPrimaryFlowEvent: jest.fn(),
+}));
+
+jest.mock('@/repositories/diagnosis.repository', () => ({
     findByUuidPlain: jest.fn(),
 }));
 
@@ -16,7 +21,7 @@ jest.mock('@/repositories/appointment.repository', () => ({
     findByUuidPlain: jest.fn(),
 }));
 
-jest.mock('@/repositories/diagnosis.repository', () => ({
+jest.mock('@/repositories/patient.repository', () => ({
     findByUuidPlain: jest.fn(),
 }));
 
@@ -24,20 +29,22 @@ jest.mock('@/repositories/audit-log.repository', () => ({
     createAuditLog: jest.fn(),
 }));
 
-jest.mock('@/utils/flow-event', () => ({
-    createPrimaryFlowEvent: jest.fn(),
+jest.mock('@/repositories/user.repository', () => ({
+    findById: jest.fn(),
 }));
+
+// 🔴 bloquear completamente Sequelize / models
+jest.mock('@/models', () => ({}));
 
 jest.mock('@/config/database', () => ({
-    transaction: jest.fn((cb) => cb({})),
+    transaction: jest.fn(async (cb) => cb({})),
 }));
 
+// 🔴 ahora sí imports
 const treatmentService = require('@/services/treatment.service');
 
 const TreatmentRepository = require('@/repositories/treatment.repository');
 const PatientRepository = require('@/repositories/patient.repository');
-const AppointmentRepository = require('@/repositories/appointment.repository');
-const DiagnosisRepository = require('@/repositories/diagnosis.repository');
 const AuditLogRepository = require('@/repositories/audit-log.repository');
 
 const NotFoundError = require('@/errors/NotFoundError');
@@ -45,6 +52,10 @@ const NotFoundError = require('@/errors/NotFoundError');
 beforeEach(() => {
     jest.clearAllMocks();
 });
+
+// =========================
+// TESTS
+// =========================
 
 describe('createTreatment', () => {
     it('should create treatment successfully', async () => {

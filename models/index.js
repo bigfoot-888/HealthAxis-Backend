@@ -12,9 +12,9 @@ const {
     ClinicalDocumentAndAttachment,
     ClinicalDocumentAndEntity
 } = require('./clinical-document.model');
-const { Diagnosis, DiagnosisUser, DiagnosisTreatment } = require('./diagnosis.model');
+const { Diagnosis, DiagnosisUser } = require('./diagnosis.model');
 const { Treatment, TreatmentUser } = require('./treatment.model');
-const { PatientFlow, FlowEvent, FlowEdge } = require('./patient-flow.model');
+const { PatientFlow, FlowEvent } = require('./patient-flow.model');
 const { UserDashboard, DashboardComponent } = require('./dashboard.model');
 const { AuditLog } = require('./audit-log.model');
 
@@ -222,9 +222,6 @@ const associate = async () => {
     FlowEvent.belongsTo(FlowEvent, { as: 'parent', foreignKey: 'parentEventId', targetKey: 'id' }); 
     FlowEvent.hasMany(FlowEvent, { as: 'children', foreignKey: 'parentEventId', sourceKey: 'id' }); 
 
-    FlowEdge.belongsTo(FlowEvent, { as: 'source', foreignKey: 'sourceEventId', targetKey: 'id', onDelete: 'CASCADE' }); 
-    FlowEdge.belongsTo(FlowEvent, { as: 'target', foreignKey: 'targetEventId', targetKey: 'id', onDelete: 'CASCADE' }); 
-
     // ===== Dashboard associations =====
     User.hasOne(UserDashboard, { foreignKey: 'userId', sourceKey: 'id', as: 'dashboard' }); 
     UserDashboard.belongsTo(User, { foreignKey: 'userId', targetKey: 'id', as: 'user' }); 
@@ -263,12 +260,10 @@ module.exports = {
     TreatmentUser,
     PatientFlow,
     FlowEvent,
-    FlowEdge,
     UserDashboard,
     DashboardComponent,
     AuditLog,
     Permission,
     RolePermission,
-    DiagnosisTreatment,
     associate,
 };

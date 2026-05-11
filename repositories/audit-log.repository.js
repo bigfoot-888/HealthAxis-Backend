@@ -37,8 +37,8 @@ async function createAuditLog({ action, entityType, entityId, userId, patientId,
  * @param {number} patientId
  * @returns {Promise<Array<Object>>} List of audit logs
  */
-async function findByPatientId(patientId) {
-    return AuditLog.findAll({
+async function findByPatientId(patientId, { limit, offset }) {
+    return AuditLog.findAndCountAll({
         where: { patientId },
         include: [
             {
@@ -48,7 +48,8 @@ async function findByPatientId(patientId) {
             },
         ],
         order: [['createdAt', 'DESC']],
-        limit: 50,
+        limit,
+        offset,
     });
 }
 

@@ -66,22 +66,22 @@ async function updateAgendaController(req, res) {
 }
 
 async function deactivateAgendaController(req, res) {
-    const id = req.body.id;
-    const agenda = await agendaService.deactivateAgenda(id);
+    const uuid = req.params.uuid;
+    const agenda = await agendaService.deactivateAgenda(uuid);
     res.status(201).json(agenda);
 }
 
 async function reactivateAgendaController(req, res) {
-    const id = req.body.id;
-    const agenda = await agendaService.reactivateAgenda(id);
+    const uuid = req.params.uuid;
+    const agenda = await agendaService.reactivateAgenda(uuid);
     res.status(201).json(agenda);
 }
 
 async function updateAgendaPeriodController(req, res) {
-    const uuid = req.params.uuid;
-    const { openingDate, closingDate } = req.body;
-    const periodData = { openingDate, closingDate };
-    const period = agendaService.updateAgendaPeriod(uuid, periodData);
+    const agendaUuid = req.params.agendaUuid;
+    const periodUuid = req.params.periodUuid;
+    const { ...periodData } = req.body;
+    const period = agendaService.updateAgendaPeriod(agendaUuid, periodUuid, periodData);
     res.status(201).json(period);
 }
 

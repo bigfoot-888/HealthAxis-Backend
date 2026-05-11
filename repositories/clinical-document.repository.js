@@ -38,7 +38,10 @@ async function findAll(options = {}) {
             {
                 model: User,
                 as: 'users',
-                attributes: ['id', [literal(`"users"."name" || ' ' || "users"."surname"`), 'fullName']],
+                through: {
+                    as: 'assignment',
+                    attributes: ['role'],
+                },
             },
         ],
         ...options,
@@ -122,6 +125,13 @@ async function updateAttachmentStatusById(id, status, options = {}) {
     );
 }
 
+async function updateByUuid(uuid, data, options = {}) {
+    return await ClinicalDocument.update(data, {
+        where: { uuid },
+        ...options,
+    });
+}
+
 
 module.exports = {
     create,
@@ -140,4 +150,5 @@ module.exports = {
 
     updateStatusByUuid,
     updateAttachmentStatusById,
+    updateByUuid,
 };

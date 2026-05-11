@@ -6,6 +6,7 @@ const ClinicalDocumentRepository = require('../repositories/clinical-document.re
 const NotFoundError = require('../errors/NotFoundError');
 const { throwIfNotExists } = require('../utils/error-utils');
 const { getFileFromStorage } = require('../utils/file');
+const { getChanges } = require('../utils/log.utils');
 
 // ===== CREATE =====
 
@@ -15,7 +16,7 @@ const { getFileFromStorage } = require('../utils/file');
  * Workflow:
  * - Creates clinical document with UUID
  * - Associates attachments
- * - Associates entities (diagnosis, treatment, etc.)
+ * - Associates entities (document, treatment, etc.)
  * - Associates users with roles
  *
  * @param {Object} documentData - Clinical document base data
@@ -180,6 +181,43 @@ async function updateClinicalAttachmentStatus(id, status) {
     return count;
 }
 
+
+/**
+ * Updates document data by UUID.
+ *
+ * @param {string} uuid
+ * @param {Object} documentData
+ * @param {string} userId
+ * @returns {Promise<number>} Number of affected rows
+ */
+async function updateClinicalDocument(uuid, documentData, userId) {
+    return await sequelize.transaction(async (t) => {
+        const document = await ClinicalDocumentRepository.findByUuidPlain(uuid, { transaction: t });
+        throwIfNotExists(document, 'documento clínico', { uuid });
+
+        const changes = getChanges(document, documentData, { ignoreFields: ['updatedAt'] });
+        const [count] = await ClinicalDocumentRepository.updateByUuid(uuid, documentData, { transaction: t });
+
+        if (count === 0) {
+            throw new NotFoundError('No se ha podido actualizar el documento clínico', { uuid });
+        }
+
+        // if (Object.keys(changes).length > 0) {
+        //     await AuditLogRepository.createAuditLog({
+        //         action: 'UPDATED',
+        //         entityType: 'CLINICAL_DOCUMENT',
+        //         entityId: document.id,
+        //         userId,
+        //         patientId: document.patientId,
+        //         meta: { changes },
+        //         transaction: t,
+        //     });
+        // }
+
+        return count;
+    });
+}
+
 module.exports = {
     createClinicalDocument,
     createClinicalAttachment,
@@ -192,4 +230,5 @@ module.exports = {
 
     updateClinicalDocumentStatus,
     updateClinicalAttachmentStatus,
+    updateClinicalDocument,
 };

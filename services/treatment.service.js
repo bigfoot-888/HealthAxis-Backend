@@ -16,11 +16,11 @@ const { getChanges } = require('../utils/log.utils');
  *
  * Workflow:
  * - Creates the treatment
- * - Associates users (with roles and optional assignedAt)
+ * - Associates users (with roles)
  * - Returns the fully populated treatment (with relations)
  *
  * @param {Object} treatmentData - Core treatment data (name, duration, patientId, etc.)
- * @param {Array<{user: {id: number, role: string, assignedAt?: Date}}>} [users=[]] - Users to associate
+ * @param {Array<{user: {id: number, role: string}}>} [users=[]] - Users to associate
  * @param {string} userId
  * @returns {Promise<Object>} Fully populated Treatment instance
  */

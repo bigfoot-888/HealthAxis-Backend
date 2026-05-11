@@ -3,6 +3,7 @@ jest.mock('@/repositories/appointment.repository', () => ({
     findByUuid: jest.fn(),
     findByUuidPlain: jest.fn(),
     updateByUuid: jest.fn(),
+    updateEndTime: jest.fn()
 }));
 
 jest.mock('@/repositories/user.repository', () => ({
@@ -39,18 +40,15 @@ jest.mock('@/services/user.service', () => ({
     ensureUserIsActive: jest.fn(),
 }));
 
-// ⚡ Mock de sequelize transaction
 jest.mock('@/config/database', () => ({
     transaction: jest.fn((cb) => cb({})),
 }));
 
-// ⚡ Mock uuid
 jest.mock('uuid', () => ({
     v4: jest.fn(() => 'mock-uuid'),
 }));
 
 const appointmentService = require('@/services/appointment.service');
-
 const AppointmentRepository = require('@/repositories/appointment.repository');
 const PatientRepository = require('@/repositories/patient.repository');
 const UserRepository = require('@/repositories/user.repository');
@@ -152,7 +150,7 @@ describe('updateAppointmentStatus', () => {
 
         AppointmentRepository.updateByUuid.mockResolvedValue([1]);
 
-        await appointmentService.updateAppointmentStatus('appointmentUuid', { status: 'COMPLETED' }, 999);
+        await appointmentService.updateAppointmentStatus('appointmentUuid', { status: 'COMPLETED' }, 123);
 
         expect(AuditLogRepository.createAuditLog).toHaveBeenCalled();
     });
@@ -160,21 +158,22 @@ describe('updateAppointmentStatus', () => {
     it('should throw if appointment does not exist', async () => {
         AppointmentRepository.findByUuidPlain.mockResolvedValue(null);
 
-        await expect(appointmentService.updateAppointmentStatus('appointmentUuid', { status: 'COMPLETED' }, 999)).rejects.toThrow();
+        await expect(
+            appointmentService.updateAppointmentStatus('appointmentUuid', { status: 'COMPLETED' }, 434),
+        ).rejects.toThrow();
     });
-
     it('should not create audit log if status does not change', async () => {
         const AuditLogRepository = require('@/repositories/audit-log.repository');
 
         AppointmentRepository.findByUuidPlain.mockResolvedValue({
             id: 1,
             patientId: 1,
-            status: 'COMPLETED',
+            status: 'SCHEDULED',
         });
 
         AppointmentRepository.updateByUuid.mockResolvedValue([1]);
 
-        await appointmentService.updateAppointmentStatus('appointmentUuid', { status: 'COMPLETED' }, 999);
+        await appointmentService.updateAppointmentStatus('appointmentUuid', { status: 'SCHEDULED' }, 544);
 
         expect(AuditLogRepository.createAuditLog).not.toHaveBeenCalled();
     });

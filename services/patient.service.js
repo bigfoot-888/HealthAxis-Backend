@@ -237,16 +237,18 @@ async function getPatientDetail(uuid) {
  * - Orders logs by creation date (most recent first)
  *
  * @param {string} uuid - Patient UUID
+ * @param {number} page 
+ * @param {number} limit 
  * @returns {Promise<Array<Object>>} List of audit logs
  * @throws {NotFoundError} If patient does not exist
  */
-async function getPatientHistory(uuid) {
+async function getPatientHistory(uuid, page, limit) {
     const patient = await PatientRepository.findByUuidPlain(uuid);
     throwIfNotExists(patient, 'paciente', { uuid });
 
-    const logs = await AuditLogRepository.findByPatientId(patient.id);
-
-    return logs;
+    const offset = (page - 1) * limit;
+    const {rows, count} = await AuditLogRepository.findByPatientId(patient.id, { limit, offset });
+    return {logs: rows, total: count};
 }
 
 /**

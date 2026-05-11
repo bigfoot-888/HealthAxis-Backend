@@ -63,7 +63,7 @@ async function findByUuidDetailed(uuid, options = {}) {
                 as: 'users',
                 through: {
                     as: 'assignment',
-                    attributes: ['role', 'assignedAt'],
+                    attributes: ['role'],
                 },
             },
             { model: Patient, as: 'patient' },

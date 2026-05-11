@@ -57,7 +57,6 @@ async function createUser(userData, roles = []) {
         const dashboard = await UserRepository.createDashboard(user.id, { transaction: t });
 
         const defaultComponents = [
-            // ===== KPIs =====
             {
                 title: 'Total Pacientes',
                 type: 'KPI',

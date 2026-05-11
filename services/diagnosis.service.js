@@ -240,7 +240,7 @@ async function updateDiagnosisClinicalStatus(uuid, clinicalStatus, userId) {
                 case 'RESOLVED':
                     title = 'Diagnóstico resuelto';
                     break;
-                case 'INACTIVE':
+                case 'RULED_OUT':
                     title = 'Diagnóstico descartado';
                     break;
             }

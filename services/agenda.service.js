@@ -5,6 +5,7 @@ const AgendaRepository = require('../repositories/agenda.repository');
 
 const ConflictError = require('../errors/ConflictError');
 const NotFoundError = require('../errors/NotFoundError');
+const ValidationError = require('../errors/ValidationError');
 const { throwIfNotExists } = require('../utils/error-utils');
 
 // ===== CREATE =====
@@ -22,22 +23,13 @@ const { throwIfNotExists } = require('../utils/error-utils');
  * @returns {Promise<Object>}
  */
 async function createAgenda(agendaData, periodData) {
+    // CHECK: agenda doesn't already exist
     const existingAgenda = await AgendaRepository.findByName(agendaData.name);
+    if (existingAgenda)
+        throw new ConflictError('Error, ya existe una agenda con este nombre.', { name: agendaData.name });
 
-    if (existingAgenda) {
-        throw new ConflictError('Error, ya existe una agenda con este nombre.', {
-            name: agendaData.name,
-        });
-    }
-
-    return await sequelize.transaction(async (t) => {
-        const agenda = await AgendaRepository.create(
-            {
-                ...agendaData,
-                uuid: uuidv4(),
-            },
-            { transaction: t },
-        );
+    return await sequelize.transaction(async t => {
+        const agenda = await AgendaRepository.create({ ...agendaData, uuid: uuidv4() }, { transaction: t });
 
         await AgendaRepository.createPeriod(
             {
@@ -47,7 +39,7 @@ async function createAgenda(agendaData, periodData) {
                 status: 'ACTIVE',
                 agendaStatus: 'OPEN',
             },
-            { transaction: t },
+            { transaction: t }
         );
 
         return agenda;
@@ -67,14 +59,26 @@ async function createAgenda(agendaData, periodData) {
  * @returns {Promise<Object>}
  */
 async function createAgendaPeriod(agendaUuid, periodData) {
-    return await sequelize.transaction(async (t) => {
+    return await sequelize.transaction(async t => {
         const agenda = await AgendaRepository.findByUuidPlain(agendaUuid, { transaction: t });
         const resolvedAgenda = throwIfNotExists(agenda, 'agenda', { uuid: agendaUuid });
 
-        await AgendaRepository.deactivateActivePeriodsByAgendaId(resolvedAgenda.id, {
-            transaction: t,
-        });
+        // CHECK: opening date is not before today
+        const openingDate = new Date(periodData.openingDate);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        openingDate.setHours(0, 0, 0, 0);
+        if (openingDate < today)
+            throw new ValidationError('La fecha de apertura no puede ser anterior a hoy', { openingDate });
 
+        // CHECK: closing date is not before opening date
+        const closingDate = new Date(periodData.closingDate);
+        closingDate.setHours(0, 0, 0, 0);
+        if (closingDate < openingDate) 
+            throw new ValidationError('La fecha de cierre no puede ser anterior a la de apertura', {closingDate,});
+
+
+        await AgendaRepository.deactivateActivePeriodsByAgendaId(resolvedAgenda.id, {transaction: t,});
         return await AgendaRepository.createPeriod(
             {
                 ...periodData,
@@ -83,7 +87,7 @@ async function createAgendaPeriod(agendaUuid, periodData) {
                 status: 'ACTIVE',
                 agendaStatus: 'OPEN',
             },
-            { transaction: t },
+            { transaction: t }
         );
     });
 }
@@ -167,7 +171,7 @@ async function updateAgenda(uuid, agendaData) {
  * Deactivates an agenda and cancels active period if open.
  */
 async function deactivateAgenda(uuid) {
-    return await sequelize.transaction(async (t) => {
+    return await sequelize.transaction(async t => {
         const agenda = await AgendaRepository.findByUuidPlain(uuid, { transaction: t });
         const resolved = throwIfNotExists(agenda, 'agenda', { uuid });
 
@@ -213,15 +217,31 @@ async function updateAgendaPeriod(agendaUuid, periodUuid, periodData) {
     const period = await AgendaRepository.findPeriodByUuid(periodUuid);
     const resolvedPeriod = throwIfNotExists(period, 'periodo de agenda', { uuid: periodUuid });
 
-    if (resolvedPeriod.agendaId !== resolvedAgenda.id) {
-        throw new NotFoundError('Error, el periodo no pertenece a la agenda', {
-            agendaUuid,
-            periodUuid,
-        });
-    }
+    // // CHECK: closing date is not before opening date
+    // const closingDate = new Date(periodData.closingDate);
+    // const today = new Date();
+    // closingDate.setHours(0, 0, 0, 0);
+    // today.setHours(0, 0, 0, 0);
+    // if (closingDate < openingDate) {
+    //     throw new ValidationError('La fecha de cierre no puede ser anterior a la fecha de apertura', {
+    //         closingDate,
+    //     });
+    // }
 
+    // // CHECK: closing date is not before today
+    // if (closingDate < today)
+    //     throw new ValidationError('La fecha de cierre no puede ser anterior a hoy', { closingDate });
+
+    // // CHECK: the agenda period is in the agenda it is said to be in
+    // if (resolvedPeriod.agendaId !== resolvedAgenda.id) {
+    //     throw new NotFoundError('Error, el periodo no pertenece a la agenda', {
+    //         agendaUuid,
+    //         periodUuid,
+    //     });
+    // }
+
+    // CHECK: the agenda period was actually updated
     const [count] = await AgendaRepository.updatePeriodByUuid(periodUuid, periodData);
-
     if (count === 0) {
         throw new NotFoundError('Error, no se han podido editar los datos del periodo', {
             periodUuid,

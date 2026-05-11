@@ -87,11 +87,6 @@ const DiagnosisUser = sequelize.define(
             allowNull: false,
             defaultValue: 'CONTRIBUTOR',
         },
-        assignedAt: {
-            type: DataTypes.DATE,
-            allowNull: true,
-            defaultValue: DataTypes.NOW,
-        },
     },
     {
         tableName: 'DiagnosisUsers',
@@ -99,36 +94,7 @@ const DiagnosisUser = sequelize.define(
     },
 );
 
-const DiagnosisTreatment = sequelize.define(
-    'DiagnosisTreatment',
-    {
-        id: {
-            type: DataTypes.INTEGER,
-            primaryKey: true,
-            autoIncrement: true,
-            allowNull: false,
-        },
-        diagnosisId: {
-            type: DataTypes.INTEGER,
-            allowNull: false,
-            references: { model: 'Diagnoses', key: 'id' },
-            onDelete: 'CASCADE',
-        },
-        treatmentId: {
-            type: DataTypes.INTEGER,
-            allowNull: false,
-            references: { model: 'Treatments', key: 'id' },
-            onDelete: 'CASCADE',
-        },
-    },
-    {
-        tableName: 'DiagnosisTreatments',
-        timestamps: true,
-    },
-);
-
 module.exports = {
     Diagnosis,
     DiagnosisUser,
-    DiagnosisTreatment,
 };

@@ -36,15 +36,17 @@ router.patch('/:uuid/reactivate', requirePermission("agenda:update"), validateUu
 
 router.post(
     '/:uuid/periods',
+    requirePermission("agenda:create"),
     validateUuidParam('uuid'),
     createAgendaPeriodRules,
     validateRequest,
     asyncHandler(agendaController.createAgendaPeriodController),
 );
 
-router.put(
-    '/:uuid/periods/:periodUuid',
-    validateUuidParam('uuid'),
+router.patch(
+    '/:agendaUuid/periods/:periodUuid',
+    requirePermission("agenda:update"),
+    validateUuidParam('agendaUuid'),
     validateUuidParam('periodUuid'),
     updateAgendaPeriodRules,
     validateRequest,

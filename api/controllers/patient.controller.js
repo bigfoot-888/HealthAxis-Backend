@@ -41,8 +41,9 @@ async function getPatientsController(req, res) {
 
 async function getPatientHistoryController(req, res) {
     const { uuid } = req.params;
-    const patientHistory = await patientService.getPatientHistory(uuid);
-    res.status(200).json(patientHistory);
+    const { page = 1, limit = 20 } = req.query;
+    const {logs, total} = await patientService.getPatientHistory(uuid, page, limit);
+    res.status(200).json({logs, total});
 }
 
 async function getFilteredPatientsController(req, res) {

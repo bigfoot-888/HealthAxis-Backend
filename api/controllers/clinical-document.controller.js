@@ -86,6 +86,17 @@ async function getClinicalAttachmentController(req, res) {
 
 // ===== UPDATE =====
 
+async function updateClinicalDocumentController(req, res){
+    const { uuid } = req.params;
+    const { ...documentData } = req.body;
+
+    const payload = {
+        ...documentData,
+    };
+    const updatedDocument = await clinicalDocumentService.updateClinicalDocument(uuid, payload, req.user.id);
+    res.status(200).json(updatedDocument);
+}
+
 async function updateClinicalDocumentStatusController(req, res) {
     const { uuid } = req.params;
     const { status } = req.body;
@@ -114,4 +125,5 @@ module.exports = {
 
     updateClinicalDocumentStatusController,
     updateClinicalAttachmentStatusController,
+    updateClinicalDocumentController,
 };

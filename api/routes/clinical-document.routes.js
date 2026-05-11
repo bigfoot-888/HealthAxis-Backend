@@ -7,6 +7,7 @@ const clinicalDocumentController = require('../controllers/clinical-document.con
 const {
     createClinicalDocumentRules,
     createClinicalAttachmentRules,
+    editClinicalDocumentRules,
 } = require('../validators/clinical-document.validators');
 
 const validateRequest = require('../../middlewares/request-validator.middleware');
@@ -48,6 +49,16 @@ router.get(
     validateUuidParam('uuid'),
     asyncHandler(clinicalDocumentController.getClinicalDocumentPlainController),
 );
+
+// ===== UPDATE =====
+
+router.put(
+    '/:uuid',
+    requirePermission("clinical-document:update"), 
+    editClinicalDocumentRules,
+    validateUuidParam('uuid'),
+    asyncHandler(clinicalDocumentController.updateClinicalDocumentController),
+)
 
 router.patch(
     '/:uuid/status',

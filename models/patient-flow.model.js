@@ -73,42 +73,8 @@ const FlowEvent = sequelize.define(
     }
 );
 
-const FlowEdge = sequelize.define(
-    'FlowEdge',
-    {
-        id: {
-            type: DataTypes.INTEGER,
-            primaryKey: true,
-            autoIncrement: true,
-            allowNull: false,
-        },
-        uuid: { 
-            type: DataTypes.UUID, 
-            defaultValue: DataTypes.UUIDV4, 
-            allowNull: false,
-            unique: true 
-        },
-        sourceEventId: {
-            type: DataTypes.INTEGER,
-            allowNull: false,
-            references: { model: 'FlowEvents', key: 'id' },
-            onDelete: 'CASCADE',
-        },
-        targetEventId: {
-            type: DataTypes.INTEGER,
-            allowNull: false,
-            references: { model: 'FlowEvents', key: 'id' },
-            onDelete: 'CASCADE',
-        },
-    },
-    {
-        tableName: 'FlowEdges',
-        timestamps: true,
-    }
-);
 
 module.exports = { 
     PatientFlow, 
     FlowEvent, 
-    FlowEdge 
 };

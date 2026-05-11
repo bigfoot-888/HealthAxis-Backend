@@ -23,43 +23,14 @@ const createAppointmentRules = [
     check('startTime')
         .notEmpty()
         .withMessage('La fecha y hora de inicio es obligatoria')
-        .custom((value) => {
-            const startTime = new Date(value);
-
-            if (isNaN(startTime)) {
-                throw new ValidationError('Fecha inválida', { startTime: value });
-            }
-
-            return true;
-        }),
+        .isISO8601()
+        .withMessage('Fecha de inicio inválida'),
     check('user')
         .notEmpty()
-        .withMessage('El usuario es obligatorio')
-        .custom(async (value) => {
-            try {
-                await userService.getUserById(value.id);
-                return true;
-            } catch (error) {
-                if (error instanceof NotFoundError) {
-                    throw new ValidationError('El usuario especificado no existe', { user: value });
-                }
-                throw error;
-            }
-        }),
+        .withMessage('El usuario es obligatorio'),
     check('patient')
         .notEmpty()
         .withMessage('El paciente es obligatorio')
-        .custom(async (value) => {
-            try {
-                await patientService.getPatientById(value.id);
-                return true;
-            } catch (error) {
-                if (error instanceof NotFoundError) {
-                    throw new ValidationError('El paciente especificado no existe', { patient: value });
-                }
-                throw error;
-            }
-        }),
 ];
 
 const updateAppointmentRules = [
@@ -78,17 +49,8 @@ const updateAppointmentRules = [
     check('startTime')
         .notEmpty()
         .withMessage('La fecha y hora de inicio es obligatoria')
-        .custom((value) => {
-            const startTime = new Date(value);
-            const today = new Date();
-            if (startTime < today) {
-                throw new ValidationError('La fecha y hora de inicio no puede ser anterior a la fecha y hora actual', {
-                    startTime: value,
-                });
-            }
-
-            return true;
-        }),
+        .isISO8601()
+        .withMessage('Fecha de inicio inválida'),
 ];
 
 module.exports = {

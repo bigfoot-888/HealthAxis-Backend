@@ -82,10 +82,6 @@ const TreatmentUser = sequelize.define(
             allowNull: false,
             defaultValue: 'CONTRIBUTOR',
         },
-        assignedAt: {
-            type: DataTypes.DATE,
-            defaultValue: DataTypes.NOW,
-        },
     },
     {
         tableName: 'TreatmentUsers',

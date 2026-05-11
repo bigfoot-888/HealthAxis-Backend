@@ -31,7 +31,6 @@ async function getMe(req) {
 }
 
 async function logout(req) {
-    console.log("hoal")
     return new Promise((resolve, reject) => {
         req.session.destroy((err) => {
             if (err) return reject(err);

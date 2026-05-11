@@ -44,22 +44,15 @@ const createClinicalDocumentRules = [
                 throw error;
             }
         }),
-    // check('state')
-    //     .notEmpty()
-    //     .withMessage('El estado del documento es obligatorio')
-    //     .isIn(['DRAFTED', "FINAL", "AMENDED", "ARCHIVED", "VOID"])
-    //     .withMessage('El estado del documento debe estar entre: redactado, final, modificado, archivado, y nulo'),
 ];
 
-const createClinicalDocumentEntityRules = [
-        check('entityType')
+const editClinicalDocumentRules = [
+    check('title')
         .notEmpty()
-        .withMessage('El tipo de entidad asociado a un documento es obligatorio')
-        .isIn(['DIAGNOSIS', 'TREATMENT', "APPOINTMENT"])
-        .withMessage(
-            'El tipo de entidad asociado a un documento debe estar entre: diagnóstico, tratamiento, y cita',
-        ),
-];
+        .withMessage('El título del documento es obligatorio')
+        .isLength({ max: 100 })
+        .withMessage('El título no puede superar los 100 caracteres'),
+]
 
 const createClinicalAttachmentRules = [
     check('fileName')
@@ -76,6 +69,6 @@ const createClinicalAttachmentRules = [
 
 module.exports = {
     createClinicalDocumentRules,
-    createClinicalDocumentEntityRules,
+    editClinicalDocumentRules,
     createClinicalAttachmentRules
 };

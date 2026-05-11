@@ -14,8 +14,8 @@ const {
     ClinicalDocumentAndEntity,
 } = require('../models/clinical-document.model');
 const { Treatment, TreatmentUser } = require('../models/treatment.model');
-const { Diagnosis, DiagnosisUser, DiagnosisTreatment } = require('../models/diagnosis.model');
-const { PatientFlow, FlowEdge, FlowEvent } = require('../models/patient-flow.model');
+const { Diagnosis, DiagnosisUser } = require('../models/diagnosis.model');
+const { PatientFlow, FlowEvent } = require('../models/patient-flow.model');
 const { UserDashboard, DashboardComponent } = require('../models/dashboard.model');
 const { AuditLog } = require('../models/audit-log.model');
 const { Permission, RolePermission } = require('../models/permission.model');

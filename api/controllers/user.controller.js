@@ -59,13 +59,14 @@ async function getProfile(req, res) {
 
 async function updateUserController(req, res) {
     const { uuid } = req.params;
-    const { name, surname, email, phone, roles } = req.body;
+    const { name, surname, email, phone, roles, agenda } = req.body;
 
     const userData = {
         name,
         surname,
         email,
         phone,
+        agendaId: agenda?.id,
     };
 
     const updatedUser = await userService.updateUser(uuid, userData, roles);
