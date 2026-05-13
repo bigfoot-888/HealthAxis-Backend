@@ -39,7 +39,8 @@ async function createTreatment(treatmentData, users = [], userId) {
             entityId: treatment.id,
             transaction: t,
         });
-
+        
+        // AUDIT: create log on treatment creation
         await AuditLogRepository.createAuditLog({
             action: 'CREATED',
             entityType: 'TREATMENT',
@@ -159,6 +160,7 @@ async function updateTreatmentClinicalStatus(uuid, clinicalStatus, userId) {
             await TreatmentRepository.updateResolvedAt(uuid, new Date(), { transaction: t });
         }
 
+        // AUDIT: create log on treatment clinical status change
         if (clinicalStatus !== previousClinicalStatus) {
             await AuditLogRepository.createAuditLog({
                 action: 'CLINICAL_STATUS_CHANGED',
@@ -223,6 +225,7 @@ async function updateTreatmentStatus(uuid, newStatus, userId) {
             throw new NotFoundError('Error, no se ha podido editar el estado del registro del tratamiento', { uuid });
         }
 
+        // AUDIT: create log on treatment status change
         if (newStatus !== previousStatus) {
             await AuditLogRepository.createAuditLog({
                 action: 'STATUS_CHANGED',
@@ -300,6 +303,7 @@ async function updateTreatment(uuid, treatmentData, users, userId) {
 
         await TreatmentRepository.associateUsers(treatment, users, { transaction: t });
         
+        // AUDIT: create log on treatment update
         if (Object.keys(changes).length > 0) {
             await AuditLogRepository.createAuditLog({
                 action: 'UPDATED',

@@ -60,6 +60,7 @@ async function createAppointment(appointmentData, userId) {
             transaction: t,
         });
 
+        // AUDIT: create log on appointment creation
         await AuditLogRepository.createAuditLog({
             action: 'CREATED',
             entityType: 'APPOINTMENT',
@@ -229,6 +230,7 @@ async function updateAppointment(uuid, appointmentData, userId) {
             throw new NotFoundError('Error, cita no encontrada', { uuid });
         }
 
+        // AUDIT: create log on appointment update
         if (Object.keys(changes).length > 0) {
             await AuditLogRepository.createAuditLog({
                 action: 'UPDATED',
@@ -274,6 +276,7 @@ async function updateAppointmentStatus(uuid, payload, userId) {
             await AppointmentRepository.updateEndTime(uuid, new Date(), { transaction: t });
         }
 
+        // AUDIT: create log on appointment status change
         if (payload.status !== previousStatus) {
             await AuditLogRepository.createAuditLog({
                 action: 'STATUS_CHANGED',

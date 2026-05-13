@@ -18,6 +18,7 @@ const { throwIfNotExists } = require('../utils/error-utils');
 const { createPrimaryFlowEvent } = require('../utils/flow-event');
 
 const Sequelize = require('sequelize');
+const { getChanges } = require('../utils/log.utils');
 const SequelizeValidationError = Sequelize.ValidationError;
 
 function createNHC(id) {
@@ -65,6 +66,7 @@ async function createPatient(patientData, userId = 1) {
                 transaction: t,
             });
 
+            // AUDIT: create log on patient creation
             await AuditLogRepository.createAuditLog({
                 action: 'CREATED',
                 entityType: 'PATIENT',
@@ -305,7 +307,7 @@ async function getPatientFlow(uuid) {
         }
     }
 
-    // CAMBIAR Y MOVER LAS FUNCS A LOS REPOS CORRESPONDIENTES
+    // 
     const [appointments, diagnoses, treatments, documents] = await Promise.all([
         groupedIds.APPOINTMENT.length ? PatientRepository.findAppointmentsByIds(groupedIds.APPOINTMENT) : [],
         groupedIds.DIAGNOSIS.length ? PatientRepository.findDiagnosesByIds(groupedIds.DIAGNOSIS) : [],
@@ -383,10 +385,11 @@ async function getPatientFlow(uuid) {
  * Deactivates a patient and creates a corresponding flow event.
  *
  * @param {number} uuid - Patient UUID
+ * @param {number} userId 
  * @returns {Promise<number>} Number of affected rows
  * @throws {NotFoundError}
  */
-async function deactivatePatient(uuid) {
+async function deactivatePatient(uuid, userId) {
     return await sequelize.transaction(async (t) => {
         const patient = await PatientRepository.findByUuidPlain(uuid, { transaction: t });
         if (!patient) {
@@ -417,6 +420,17 @@ async function deactivatePatient(uuid) {
             transaction: t,
         });
 
+        // AUDIT: create log on patient status change
+        await AuditLogRepository.createAuditLog({
+            action: 'STATUS_CHANGED',
+            entityType: 'PATIENT',
+            entityId: patient.id,
+            userId,
+            patientId: patient.id,
+            meta: { previousStatus: 'ACTIVE', newStatus: 'INACTIVE' },
+            transaction: t,
+        });
+
         return count;
     });
 }
@@ -425,11 +439,12 @@ async function deactivatePatient(uuid) {
  * Reactivates a patient and creates a corresponding flow event.
  *
  * @param {number} uuid - Patient UUID
+ * @param {number} userId 
  * @returns {Promise<number>} Number of affected rows
  * @throws {NotFoundError}
  */
-async function reactivatePatient(uuid) {
-    return await sequelize.transaction(async (t) => {
+async function reactivatePatient(uuid, userId) {
+    return await sequelize.transaction(async t => {
         const patient = await PatientRepository.findByUuidPlain(uuid, { transaction: t });
 
         if (!patient) {
@@ -450,6 +465,17 @@ async function reactivatePatient(uuid) {
             transaction: t,
         });
 
+        // AUDIT: create log on patient status change
+        await AuditLogRepository.createAuditLog({
+            action: 'STATUS_CHANGED',
+            entityType: 'PATIENT',
+            entityId: patient.id,
+            userId,
+            patientId: patient.id,
+            meta: { previousStatus: 'INACTIVE', newStatus: 'ACTIVE' },
+            transaction: t,
+        });
+
         return count;
     });
 }
@@ -458,18 +484,37 @@ async function reactivatePatient(uuid) {
  * Updates patient data by UUID.
  *
  * @param {string} uuid - Patient UUID
- * @param {Object} patientData - Fields to update
+ * @param {number} userId 
  * @returns {Promise<number>} Number of affected rows
  * @throws {NotFoundError}
  */
-async function updatePatient(uuid, patientData) {
-    const [count] = await PatientRepository.updateByUuid(uuid, patientData);
+async function updatePatient(uuid, patientData, userId) {
+    return await sequelize.transaction(async t => {
+        const patient = await PatientRepository.findByUuidPlain(uuid, { transaction: t });
+        throwIfNotExists(patient, 'paciente', { uuid });
 
-    if (count === 0) {
-        throw new NotFoundError('Error, no se han podido editar los datos del paciente', { uuid });
-    }
+        const changes = getChanges(patient, patientData, { ignoreFields: ['updatedAt'] });
 
-    return count;
+        const [count] = await PatientRepository.updateByUuid(uuid, patientData);
+
+        if (count === 0) 
+            throw new NotFoundError('Error, no se han podido editar los datos del paciente', { uuid });
+
+        // AUDIT: create log on patient update
+        if (Object.keys(changes).length > 0) {
+            await AuditLogRepository.createAuditLog({
+                action: 'UPDATED',
+                entityType: 'PATIENT',
+                entityId: patient.id,
+                userId,
+                patientId: patient.id,
+                meta: { changes },
+                transaction: t,
+            });
+        }
+
+        return count;
+    });
 }
 
 // ===== DELETES =====

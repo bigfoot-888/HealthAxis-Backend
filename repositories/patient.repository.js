@@ -5,7 +5,6 @@ const { escapeLike } = require('../utils/query-utils');
 // ===== CREATE =====
 
 async function create(patientData, options = {}) {
-    console.log(patientData)
     return await Patient.create(patientData, options);
 }
 

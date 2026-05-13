@@ -15,7 +15,6 @@ const storage = multer.diskStorage({
     filename: (req, file, cb) => {
         const uuid = uuidv4(); // valid UUID
         req.storageKey = uuid; // store for DB
-        console.log(file.originalname);
         cb(null, uuid + '.' + file.originalname); // actual file on disk
     },
 });

@@ -7,10 +7,8 @@ const { Permission, RolePermission } = require('./permission.model')
 const {
     ClinicalDocument,
     ClinicalAttachment,
-    ClinicalDocumentEntity,
     ClinicalDocumentUser,
     ClinicalDocumentAndAttachment,
-    ClinicalDocumentAndEntity
 } = require('./clinical-document.model');
 const { Diagnosis, DiagnosisUser } = require('./diagnosis.model');
 const { Treatment, TreatmentUser } = require('./treatment.model');
@@ -100,22 +98,6 @@ const associate = async () => {
     });
 
     // ===== Clinical document associations =====
-    ClinicalDocument.belongsToMany(ClinicalDocumentEntity, {
-        through: ClinicalDocumentAndEntity,
-        as: 'clinicalDocumentEntities',
-        foreignKey: 'clinicalDocumentId',
-        otherKey: 'clinicalDocumentEntityId',
-        sourceKey: 'id', 
-        targetKey: 'id', 
-    });
-    ClinicalDocumentEntity.belongsToMany(ClinicalDocument, {
-        through: ClinicalDocumentAndEntity,
-        as: 'clinicalDocuments',
-        foreignKey: 'clinicalDocumentEntityId',
-        otherKey: 'clinicalDocumentId',
-        sourceKey: 'id', 
-        targetKey: 'id', 
-    });
 
     ClinicalDocument.belongsToMany(ClinicalAttachment, {
         through: ClinicalDocumentAndAttachment,
@@ -136,19 +118,6 @@ const associate = async () => {
 
     User.hasMany(ClinicalAttachment, { foreignKey: 'userId', sourceKey: 'id', as: 'clinicalAttachments' }); 
     ClinicalAttachment.belongsTo(User, { foreignKey: 'userId', targetKey: 'id', as: 'user' }); 
-
-    ClinicalDocumentEntity.belongsTo(Diagnosis, {
-        foreignKey: 'entityId',
-        targetKey: 'id',
-        constraints: false,
-        as: 'diagnosis',
-    }); 
-    ClinicalDocumentEntity.belongsTo(Treatment, {
-        foreignKey: 'entityId',
-        targetKey: 'id',
-        constraints: false,
-        as: 'treatment',
-    }); 
 
     ClinicalDocument.belongsToMany(User, {
         through: ClinicalDocumentUser,
@@ -253,7 +222,6 @@ module.exports = {
     Role,
     ClinicalDocument,
     ClinicalAttachment,
-    ClinicalDocumentEntity,
     Diagnosis,
     DiagnosisUser,
     Treatment,

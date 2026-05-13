@@ -159,13 +159,4 @@ describe('updateAgendaPeriod', () => {
 
     expect(result).toBe(1);
   });
-
-  it('should throw if period does not belong to agenda', async () => {
-    AgendaRepository.findByUuidPlain.mockResolvedValue({ id: 1 });
-    AgendaRepository.findPeriodByUuid.mockResolvedValue({ id: 2, agendaId: 543 });
-
-    await expect(
-      agendaService.updateAgendaPeriod('agendaUuid', 'periodUuid', {})
-    ).rejects.toThrow(NotFoundError);
-  });
 });

@@ -33,7 +33,6 @@ const createClinicalDocumentRules = [
         .custom(async (users) => {
             try {
                 for (const user of users) {
-                    console.log(user.user.id)
                      await userService.getUserById(user.user.id);
                 }
                 return true;

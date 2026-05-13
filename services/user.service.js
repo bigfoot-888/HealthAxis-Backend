@@ -13,6 +13,7 @@ const NotFoundError = require('../errors/NotFoundError');
 const ConflictError = require('../errors/ConflictError');
 const ValidationError = require('../errors/ValidationError');
 const { throwIfNotExists } = require('../utils/error-utils');
+const { DEFAULT_DASHBOARD_COMPONENTS } = require('../config/dashboard');
 
 // ===== CREATE =====
 
@@ -55,139 +56,9 @@ async function createUser(userData, roles = []) {
         await UserRepository.addRoles(user, roleInstances, { transaction: t });
 
         const dashboard = await UserRepository.createDashboard(user.id, { transaction: t });
-
-        const defaultComponents = [
-            {
-                title: 'Total Pacientes',
-                type: 'KPI',
-                position: { x: 0, y: 0, w: 2, h: 2 },
-                source: 'SYSTEM',
-
-                config: {
-                    visuals: { color: 'primary.main' },
-                    query: { entity: 'Patient', aggregation: 'COUNT', targetColumn: 'id' },
-                },
-            },
-            {
-                title: 'Pacientes Activos',
-                type: 'KPI',
-                position: { x: 2, y: 0, w: 2, h: 2 },
-                source: 'SYSTEM',
-
-                config: {
-                    visuals: { color: 'success.main' },
-                    query: {
-                        entity: 'Patient',
-                        aggregation: 'COUNT',
-                        targetColumn: 'id',
-                        filters: { status: 'ACTIVE' },
-                    },
-                },
-            },
-            {
-                title: 'Citas Hoy',
-                type: 'KPI',
-                position: { x: 4, y: 0, w: 2, h: 2 },
-                source: 'SYSTEM',
-
-                config: {
-                    visuals: { color: 'info.main' },
-                    query: {
-                        entity: 'Appointment',
-                        aggregation: 'COUNT',
-                        targetColumn: 'id',
-                        filters: { date: 'today' },
-                    },
-                },
-            },
-            {
-                title: 'Citas en espera',
-                type: 'KPI',
-                position: { x: 6, y: 0, w: 2, h: 2 },
-                source: 'SYSTEM',
-
-                config: {
-                    visuals: { color: 'warning.main' },
-                    query: {
-                        entity: 'Appointment',
-                        aggregation: 'COUNT',
-                        targetColumn: 'id',
-                        filters: { status: 'CHECKED_IN' },
-                    },
-                },
-            },
-
-            {
-                title: 'Pacientes a lo largo del tiempo',
-                type: 'LINE_CHART',
-                position: { x: 0, y: 2, w: 5, h: 3 },
-                source: 'SYSTEM',
-
-                config: {
-                    visuals: {
-                        xAxisKey: 'x',
-                        yAxisKey: 'y',
-                        yAxisLabel: 'Pacientes',
-                        tooltipLabel: 'Pacientes',
-                    },
-                    query: {
-                        entity: 'Patient',
-                        aggregation: 'COUNT',
-                        targetColumn: 'id',
-                        groupBy: 'createdAt',
-                        timeGrain: 'week',
-                    },
-                },
-            },
-            {
-                title: 'Próximas Citas',
-                type: 'LIST',
-                position: { x: 5, y: 2, w: 3, h: 3 },
-                source: 'SYSTEM',
-
-                config: {
-                    visuals: {
-                        columns: ['patientId', 'startTime', 'status'],
-                    },
-                    query: {
-                        type: 'LIST',
-                        entity: 'Appointment',
-                        scope: 'SELF',
-                        filters: { upcoming: true },
-                        orderBy: {
-                            field: 'startTime',
-                            direction: 'ASC',
-                        },
-                        limit: 5,
-                    },
-                },
-            },
-
-            {
-                title: 'Citas a lo largo del tiempo',
-                type: 'LINE_CHART',
-                position: { x: 0, y: 5, w: 8, h: 3 },
-                source: 'SYSTEM',
-                config: {
-                    visuals: {
-                        xAxisKey: 'x',
-                        yAxisKey: 'y',
-                        yAxisLabel: 'Citas',
-                        tooltipLabel: 'Citas',
-                    },
-                    query: {
-                        entity: 'Appointment',
-                        aggregation: 'COUNT',
-                        targetColumn: 'id',
-                        groupBy: 'startTime',
-                        timeGrain: 'week',
-                    },
-                },
-            },
-        ];
-
+        
         await UserRepository.bulkCreateDashboardComponents(
-            defaultComponents.map((component) => ({
+            DEFAULT_DASHBOARD_COMPONENTS.map((component) => ({
                 ...component,
                 dashboardId: dashboard.id,
             })),

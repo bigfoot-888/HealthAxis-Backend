@@ -33,14 +33,12 @@ jest.mock('@/repositories/user.repository', () => ({
     findById: jest.fn(),
 }));
 
-// 🔴 bloquear completamente Sequelize / models
 jest.mock('@/models', () => ({}));
 
 jest.mock('@/config/database', () => ({
     transaction: jest.fn(async (cb) => cb({})),
 }));
 
-// 🔴 ahora sí imports
 const treatmentService = require('@/services/treatment.service');
 
 const TreatmentRepository = require('@/repositories/treatment.repository');
@@ -52,10 +50,6 @@ const NotFoundError = require('@/errors/NotFoundError');
 beforeEach(() => {
     jest.clearAllMocks();
 });
-
-// =========================
-// TESTS
-// =========================
 
 describe('createTreatment', () => {
     it('should create treatment successfully', async () => {

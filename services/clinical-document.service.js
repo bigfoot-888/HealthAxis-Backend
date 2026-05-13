@@ -16,16 +16,14 @@ const { getChanges } = require('../utils/log.utils');
  * Workflow:
  * - Creates clinical document with UUID
  * - Associates attachments
- * - Associates entities (document, treatment, etc.)
  * - Associates users with roles
  *
  * @param {Object} documentData - Clinical document base data
  * @param {Array<number>} attachments - Array of attachment IDs
- * @param {Array<{id: number, type: string}>} entities - Related entities
  * @param {Array<{userId: number, role: string}>} users - Users with roles
  * @returns {Promise<Object>} Created clinical document
  */
-async function createClinicalDocument(documentData, attachments = [], entities = [], users = []) {
+async function createClinicalDocument(documentData, attachments = [], users = []) {
     return await sequelize.transaction(async (t) => {
         const document = await ClinicalDocumentRepository.create(
             {
@@ -39,10 +37,6 @@ async function createClinicalDocument(documentData, attachments = [], entities =
             attachments.map((attachmentId) =>
                 ClinicalDocumentRepository.addAttachment(document, attachmentId, { transaction: t }),
             ),
-        );
-
-        await Promise.all(
-            entities.map((ent) => ClinicalDocumentRepository.addEntity(document, ent.id, { transaction: t })),
         );
 
         await Promise.all(
@@ -201,18 +195,6 @@ async function updateClinicalDocument(uuid, documentData, userId) {
         if (count === 0) {
             throw new NotFoundError('No se ha podido actualizar el documento clínico', { uuid });
         }
-
-        // if (Object.keys(changes).length > 0) {
-        //     await AuditLogRepository.createAuditLog({
-        //         action: 'UPDATED',
-        //         entityType: 'CLINICAL_DOCUMENT',
-        //         entityId: document.id,
-        //         userId,
-        //         patientId: document.patientId,
-        //         meta: { changes },
-        //         transaction: t,
-        //     });
-        // }
 
         return count;
     });

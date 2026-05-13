@@ -63,7 +63,21 @@ const { createPrimaryFlowEvent } = require('@/utils/flow-event');
 
 beforeEach(() => {
     jest.clearAllMocks();
+    ensurePatientIsActive.mockImplementation(() => true);
+    ensureUserIsActive.mockImplementation(() => true);
 });
+
+const mockPatientInactive = () => {
+    ensurePatientIsActive.mockImplementation(() => {
+        throw new Error('inactivo');
+    });
+};
+
+const mockUserInactive = () => {
+    ensureUserIsActive.mockImplementation(() => {
+        throw new Error('inactivo');
+    });
+};
 
 describe('createAppointment', () => {
     it('should create appointment successfully', async () => {
@@ -76,7 +90,7 @@ describe('createAppointment', () => {
             startDate: new Date(),
         });
 
-        const result = await appointmentService.createAppointment({ patientId: 1, userId: 2 }, 999);
+        const result = await appointmentService.createAppointment({ patientId: 1, userId: 2 }, 222);
 
         expect(result).toBeDefined();
         expect(AppointmentRepository.create).toHaveBeenCalled();
@@ -85,6 +99,12 @@ describe('createAppointment', () => {
     it('should throw if patient does not exist', async () => {
         PatientRepository.findByIdPlain.mockResolvedValue(null);
 
+        await expect(appointmentService.createAppointment({ patientId: 1, userId: 2 }, 544)).rejects.toThrow();
+    });
+
+    it('should throw if patient is inactive', async () => {
+        PatientRepository.findByIdPlain.mockResolvedValue({ id: 1, status: 'INACTIVE' });
+        mockPatientInactive();
         await expect(appointmentService.createAppointment({ patientId: 1, userId: 2 }, 999)).rejects.toThrow();
     });
 
@@ -95,16 +115,11 @@ describe('createAppointment', () => {
         await expect(appointmentService.createAppointment({ patientId: 1, userId: 2 }, 999)).rejects.toThrow();
     });
 
-    it('should call validation functions', async () => {
-        PatientRepository.findByIdPlain.mockResolvedValue({ id: 1, status: 'ACTIVE' });
-        UserRepository.findById.mockResolvedValue({ id: 2, agendaId: 10, status: 'ACTIVE' });
-
-        AppointmentRepository.create.mockResolvedValue({ id: 1 });
-
-        await appointmentService.createAppointment({ patientId: 1, userId: 2 }, 999);
-
-        expect(ensurePatientIsActive).toHaveBeenCalled();
-        expect(ensureUserIsActive).toHaveBeenCalled();
+    it('should throw if user is inactive', async () => {
+        PatientRepository.findByIdPlain.mockResolvedValue({ id: 1, status: 'INACTIVE' });
+        UserRepository.findById.mockResolvedValue({ id: 2, agendaId: 10, status: 'INACTIVE' });
+        mockUserInactive();
+        await expect(appointmentService.createAppointment({ patientId: 1, userId: 2 }, 123)).rejects.toThrow();
     });
 
     it('should create flow event and audit log', async () => {
@@ -116,8 +131,7 @@ describe('createAppointment', () => {
             patientId: 1,
             startDate: new Date(),
         });
-
-        await appointmentService.createAppointment({ patientId: 1, userId: 2 }, 999);
+        await appointmentService.createAppointment({ patientId: 1, userId: 2 }, 111);
 
         expect(createPrimaryFlowEvent).toHaveBeenCalled();
         expect(AuditLogRepository.createAuditLog).toHaveBeenCalled();

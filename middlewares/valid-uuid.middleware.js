@@ -10,7 +10,7 @@ function validateUuidParam(paramName = 'uuid') {
         const uuid = req.params[paramName];
         
         if (!uuidValidate(uuid)) {
-            return next(new ValidationError('El identificador proporcionado no es un UUID válido', 400, { [paramName]: uuid }));
+            return next(new ValidationError('El identificador proporcionado no es un UUID válido', { [paramName]: uuid }));
         }
         next();
     };

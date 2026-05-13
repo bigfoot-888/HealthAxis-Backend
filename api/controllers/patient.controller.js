@@ -87,19 +87,19 @@ async function updatePatientController(req, res) {
         addressLine2,
     };
 
-    const updatedCount = await patientService.updatePatient(uuid, patientData);
+    const updatedCount = await patientService.updatePatient(uuid, patientData, req.user.id);
     res.status(200).json({ updated: updatedCount });
 }
 
 async function deactivatePatientController(req, res) {
     const { uuid } = req.params;
-    const count = await patientService.deactivatePatient(uuid);
+    const count = await patientService.deactivatePatient(uuid, req.user.id);
     res.status(200).json({ updated: count });
 }
 
 async function reactivatePatientController(req, res) {
     const { uuid } = req.params;
-    const count = await patientService.reactivatePatient(uuid);
+    const count = await patientService.reactivatePatient(uuid, req.user.id);
     res.status(200).json({ updated: count });
 }
 

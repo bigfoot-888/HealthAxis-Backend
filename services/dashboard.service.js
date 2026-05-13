@@ -2,8 +2,9 @@ const { fn, col, literal, Op } = require('sequelize');
 
 const DashboardRepository = require('../repositories/dashboard.repository');
 
-const { Patient, Appointment, Diagnosis, Treatment } = require('../models/index');
+const { Patient, Appointment, Diagnosis, Treatment, User } = require('../models/index');
 const ValidationError = require('../errors/ValidationError');
+const ForbiddenError = require('../errors/ForbiddenError');
 
 const { throwIfNotExists } = require('../utils/error-utils');
 
@@ -171,8 +172,12 @@ async function createComponent(userId, componentData) {
     const dashboard = await DashboardRepository.findByUserId(userId);
     const resolvedDashboard = throwIfNotExists(dashboard, 'dashboard', { userId });
 
-    validateComponentInput(componentData);
+    // CHECK: dashboard can at most have 10 components
+    if (dashboard.components.length >= 10) 
+        throw new ForbiddenError("El máximo número de componentes en el dashboard es 10", {length: dashboard.components.length})
 
+    // Input data is valid
+    validateComponentInput(componentData);
     const nextY = getNextAvailableY(resolvedDashboard.components);
 
     const isChart = componentData.type === 'LINE_CHART' || componentData.type === 'BAR_CHART';
@@ -231,6 +236,17 @@ async function resolveComponent(component, userId) {
         data,
     };
 }
+
+const ENTITY_INCLUDES = {
+    Appointment: [
+        { model: User, as: 'user' },
+        { model: Patient, as: 'patient' },
+    ],
+
+    Diagnosis: [
+        { model: Patient, as: 'patient' },
+    ],
+};
 
 /**
  * Executes a dynamic query definition.
@@ -298,11 +314,10 @@ async function executeDynamicQuery(queryDef, userId) {
     if (queryDef.type === 'LIST') {
         const results = await Model.findAll({
             where,
+            include: ENTITY_INCLUDES[queryDef.entity] || [],
             order: orderBy ? [[orderBy.field, orderBy.direction || 'ASC']] : undefined,
-            limit: limit || 10,
-            raw: true,
+            limit: limit || 5,
         });
-        console.log('LIST DATA:', results);
         return results;
     }
 

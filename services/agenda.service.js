@@ -217,29 +217,6 @@ async function updateAgendaPeriod(agendaUuid, periodUuid, periodData) {
     const period = await AgendaRepository.findPeriodByUuid(periodUuid);
     const resolvedPeriod = throwIfNotExists(period, 'periodo de agenda', { uuid: periodUuid });
 
-    // // CHECK: closing date is not before opening date
-    // const closingDate = new Date(periodData.closingDate);
-    // const today = new Date();
-    // closingDate.setHours(0, 0, 0, 0);
-    // today.setHours(0, 0, 0, 0);
-    // if (closingDate < openingDate) {
-    //     throw new ValidationError('La fecha de cierre no puede ser anterior a la fecha de apertura', {
-    //         closingDate,
-    //     });
-    // }
-
-    // // CHECK: closing date is not before today
-    // if (closingDate < today)
-    //     throw new ValidationError('La fecha de cierre no puede ser anterior a hoy', { closingDate });
-
-    // // CHECK: the agenda period is in the agenda it is said to be in
-    // if (resolvedPeriod.agendaId !== resolvedAgenda.id) {
-    //     throw new NotFoundError('Error, el periodo no pertenece a la agenda', {
-    //         agendaUuid,
-    //         periodUuid,
-    //     });
-    // }
-
     // CHECK: the agenda period was actually updated
     const [count] = await AgendaRepository.updatePeriodByUuid(periodUuid, periodData);
     if (count === 0) {

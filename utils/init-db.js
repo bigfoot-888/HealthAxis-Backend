@@ -7,11 +7,9 @@ const { Agenda, AgendaPeriod } = require('../models/agenda.model');
 const { Role, UserRole } = require('../models/role.model');
 const {
     ClinicalDocument,
-    ClinicalDocumentEntity,
     ClinicalAttachment,
     ClinicalDocumentUser,
     ClinicalDocumentAndAttachment,
-    ClinicalDocumentAndEntity,
 } = require('../models/clinical-document.model');
 const { Treatment, TreatmentUser } = require('../models/treatment.model');
 const { Diagnosis, DiagnosisUser } = require('../models/diagnosis.model');

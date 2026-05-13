@@ -3,14 +3,7 @@ const clinicalDocumentService = require('../../services/clinical-document.servic
 // ===== CREATE =====
 
 async function createClinicalDocumentController(req, res) {
-    const { attachments, entities, users = [], ...documentData } = req.body;
-
-    const mappedEntities =
-        entities?.map((ent) => ({
-            id: ent.id,
-            type: ent.type,
-        })) || [];
-
+    const { attachments, users = [], ...documentData } = req.body;
     const mappedUsers = users.map((u) => ({
         userId: u.user.id,
         role: u.role,
@@ -19,9 +12,7 @@ async function createClinicalDocumentController(req, res) {
     const document = await clinicalDocumentService.createClinicalDocument(
         documentData,
         attachments,
-        mappedEntities,
         mappedUsers,
-        
     );
 
     res.status(201).json(document);
@@ -31,7 +22,7 @@ async function createClinicalAttachmentController(req, res) {
     const file = req.file;
 
     if (!file) {
-        throw new Error('File is required');
+        throw new Error('El archivo es obligatorio');
     }
 
     const attachment = await clinicalDocumentService.createClinicalAttachment({

@@ -1,4 +1,4 @@
-const { ClinicalDocument, ClinicalAttachment, ClinicalDocumentEntity, User } = require('../models/index');
+const { ClinicalDocument, ClinicalAttachment, User } = require('../models/index');
 
 const { Op, literal } = require('sequelize');
 const { escapeLike } = require('../utils/query-utils');
@@ -17,10 +17,6 @@ async function addAttachment(document, attachmentId, options = {}) {
     return await document.addClinicalAttachment(attachmentId, options);
 }
 
-async function addEntity(document, entityId, options = {}) {
-    return await document.addClinicalDocumentEntity(entityId, options);
-}
-
 async function addUser(document, userId, throughData, options = {}) {
     return await document.addUser(userId, {
         through: throughData,
@@ -34,7 +30,6 @@ async function findAll(options = {}) {
     return await ClinicalDocument.findAll({
         include: [
             { model: ClinicalAttachment, as: 'clinicalAttachments' },
-            { model: ClinicalDocumentEntity, as: 'clinicalDocumentEntities' },
             {
                 model: User,
                 as: 'users',
@@ -53,7 +48,6 @@ async function findByUuid(uuid, options = {}) {
         where: { uuid },
         include: [
             { model: ClinicalAttachment, as: 'clinicalAttachments' },
-            { model: ClinicalDocumentEntity, as: 'clinicalDocumentEntities' },
             { model: User, as: 'users' },
         ],
         ...options,
@@ -89,7 +83,6 @@ async function searchFiltered(query, limit = 20, options = {}) {
     if (!query || query.length < 2) return [];
 
     const safeQuery = `%${escapeLike(query)}%`;
-    console.log(safeQuery)
     return await ClinicalDocument.findAll({
         attributes: ['id', 'title'],
         where: {
@@ -137,7 +130,6 @@ module.exports = {
     create,
     createAttachment,
     addAttachment,
-    addEntity,
     addUser,
 
     findAll,

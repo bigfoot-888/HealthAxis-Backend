@@ -81,6 +81,7 @@ async function createDiagnosis(diagnosisData, users = [], userId) {
             transaction: t,
         });
 
+        // AUDIT: create log on diagnosis creation
         await AuditLogRepository.createAuditLog({
             action: 'CREATED',
             entityType: 'DIAGNOSIS',
@@ -215,7 +216,7 @@ async function updateDiagnosisClinicalStatus(uuid, clinicalStatus, userId) {
             await DiagnosisRepository.updateResolvedAt(uuid, new Date(), { transaction: t });
         }
 
-        // If the status actually changed, create new audit log
+        // AUDIT: create log on diagnosis clinical status change
         if (clinicalStatus !== previousClinicalStatus) {
             await AuditLogRepository.createAuditLog({
                 action: 'CLINICAL_STATUS_CHANGED',
@@ -280,6 +281,7 @@ async function updateDiagnosisRecordStatus(uuid, status, userId) {
             throw new NotFoundError('No se ha podido actualizar el estado del diagnóstico', { uuid });
         }
 
+        // AUDIT: create log on diagnosis status change
         if (status !== previousStatus) {
             await AuditLogRepository.createAuditLog({
                 action: 'STATUS_CHANGED',
@@ -349,6 +351,7 @@ async function updateDiagnosis(uuid, diagnosisData, users, userId) {
 
         await DiagnosisRepository.associateUsers(diagnosis, users, { transaction: t });
 
+        // AUDIT: create log on diagnosis update
         if (Object.keys(changes).length > 0) {
             await AuditLogRepository.createAuditLog({
                 action: 'UPDATED',

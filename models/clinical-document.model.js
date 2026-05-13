@@ -44,30 +44,6 @@ const ClinicalDocument = sequelize.define(
     },
 );
 
-const ClinicalDocumentEntity = sequelize.define(
-    'ClinicalDocumentEntity',
-    {
-        id: {
-            type: DataTypes.INTEGER,
-            primaryKey: true,
-            autoIncrement: true,
-            allowNull: false,
-        },
-        entityId: {
-            type: DataTypes.INTEGER,
-            allowNull: false,
-        },
-        entityType: {
-            type: DataTypes.ENUM('DIAGNOSIS', 'TREATMENT', 'APPOINTMENT'),
-            allowNull: false,
-        },
-    },
-    {
-        tableName: 'ClinicalDocumentEntities',
-        timestamps: true,
-    },
-);
-
 const ClinicalAttachment = sequelize.define(
     'ClinicalAttachment',
     {
@@ -132,29 +108,6 @@ const ClinicalDocumentUser = sequelize.define(
     },
 );
 
-const ClinicalDocumentAndEntity = sequelize.define(
-    'ClinicalDocumentAndEntity',
-    {
-        id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true, allowNull: false },
-        clinicalDocumentId: {
-            type: DataTypes.INTEGER,
-            allowNull: false,
-            references: { model: 'ClinicalDocuments', key: 'id' },
-            onDelete: 'CASCADE',
-        },
-        clinicalDocumentEntityId: {
-            type: DataTypes.INTEGER,
-            allowNull: false,
-            references: { model: 'ClinicalDocumentEntities', key: 'id' },
-            onDelete: 'CASCADE',
-        },
-    },
-    {
-        tableName: 'ClinicalDocumentsAndEntities',
-        timestamps: true,
-    },
-);
-
 const ClinicalDocumentAndAttachment = sequelize.define(
     'ClinicalDocumentAndAttachment',
     {
@@ -180,9 +133,7 @@ const ClinicalDocumentAndAttachment = sequelize.define(
 
 module.exports = {
     ClinicalDocument,
-    ClinicalDocumentEntity,
     ClinicalAttachment,
     ClinicalDocumentUser,
-    ClinicalDocumentAndEntity,
     ClinicalDocumentAndAttachment,
 };

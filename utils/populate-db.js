@@ -49,7 +49,7 @@ async function seed() {
             await Agenda.create({
                 name: `Agenda ${i + 1}`,
                 status: 'ACTIVE',
-            }),
+            })
         );
     }
     for (const agenda of agendas) {
@@ -166,8 +166,8 @@ async function seed() {
 
     const roles = await Role.findAll();
 
-    const ADMIN_ROLE = roles.find((r) => r.name === 'ADMINISTRATIVE');
-    const CARDIO_ROLE = roles.find((r) => r.name === 'CARDIOLOGIST');
+    const ADMIN_ROLE = roles.find(r => r.name === 'ADMINISTRATIVE');
+    const CARDIO_ROLE = roles.find(r => r.name === 'CARDIOLOGIST');
 
     const adminUser = await User.create({
         name: 'David',
@@ -186,10 +186,10 @@ async function seed() {
     });
 
     await DashboardComponent.bulkCreate(
-        defaultComponents.map((component) => ({
+        defaultComponents.map(component => ({
             ...component,
             dashboardId: dashboard.id,
-        })),
+        }))
     );
 
     // ===== USERS =====
@@ -216,10 +216,10 @@ async function seed() {
         });
 
         await DashboardComponent.bulkCreate(
-            defaultComponents.map((component) => ({
+            defaultComponents.map(component => ({
                 ...component,
                 dashboardId: dashboard.id,
-            })),
+            }))
         );
     }
 
@@ -293,7 +293,7 @@ async function seed() {
                 endTime,
                 status,
                 type: rand(['IN_PERSON', 'VIRTUAL']),
-            }),
+            })
         );
     }
 
@@ -346,6 +346,9 @@ async function seed() {
         const treatment = await Treatment.create({
             patientId: patient.id,
             appointmentId: appointment.id,
+
+            diagnosisId: i % 2 === 0 ? diagnoses[i % diagnoses.length].id : null,
+
             name: rand([
                 'Terapia farmacológica',
                 'Fisioterapia',
@@ -353,11 +356,16 @@ async function seed() {
                 'Terapia cognitiva',
                 'Tratamiento del dolor',
             ]),
+
             description: faker.lorem.sentence(),
+
             notes: faker.datatype.boolean() ? faker.lorem.paragraph() : null,
+
             duration: rand(['1 semana', '2 semanas', '1 mes', '3 meses']),
+
             clinicalStatus,
             status: rand(['VALID', 'VOID', 'ENTERED_IN_ERROR']),
+
             devisedAt,
             resolvedAt,
         });
@@ -367,17 +375,9 @@ async function seed() {
             userId: users[i % users.length].id,
             role: 'AUTHOR',
         });
-
-        if (i % 2 === 0) {
-            const diagnosis = diagnoses[i % diagnoses.length];
-            await DiagnosisTreatment.create({
-                diagnosisId: diagnosis.id,
-                treatmentId: treatment.id,
-            });
-        }
     }
 
-    console.log('✅ Full deterministic realistic seed completed');
+    console.log('Full deterministic realistic seed completed');
 }
 
 module.exports = {
