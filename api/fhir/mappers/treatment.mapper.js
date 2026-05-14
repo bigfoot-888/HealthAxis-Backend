@@ -24,8 +24,6 @@ function mapTreatmentToFhirProcedure(treatment) {
             reference: `Patient/${treatment.patient.uuid}`,
         },
 
-        occurrenceDateTime: mapDateToInstant(treatment.devisedAt),
-
         note: notes.length ? notes : undefined,
     };
 }
