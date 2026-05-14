@@ -20,8 +20,21 @@ jest.mock('uuid', () => ({
   v4: jest.fn(() => 'mock-uuid'),
 }));
 
+jest.mock('@/repositories/user.repository', () => ({
+  findByAgendaId: jest.fn(),
+}));
+
+jest.mock('@/repositories/appointment.repository', () => ({
+  hasActiveAppointmentsByUserIds: jest.fn(),
+}));
+
+jest.mock('@/services/user.service', () => ({
+  ensureUserIsActive: jest.fn(),
+}));
+
 const agendaService = require('@/services/agenda.service');
 const AgendaRepository = require('@/repositories/agenda.repository');
+const UserRepository = require('@/repositories/user.repository');
 
 const NotFoundError = require('@/errors/NotFoundError');
 const ConflictError = require('@/errors/ConflictError');
@@ -92,50 +105,48 @@ describe('getAgenda', () => {
 });
 
 describe('updateAgenda', () => {
-  it('should update successfully', async () => {
-    AgendaRepository.findByUuidPlain.mockResolvedValue({ id: 1 });
-    AgendaRepository.findByName.mockResolvedValue(null);
-    AgendaRepository.updateByUuid.mockResolvedValue([1]);
+    it('should update successfully', async () => {
+        AgendaRepository.findByUuidPlain.mockResolvedValue({ id: 1 });
+        AgendaRepository.findByName.mockResolvedValue(null);
+        AgendaRepository.updateByUuid.mockResolvedValue([1]);
 
-    const result = await agendaService.updateAgenda('General de Cardiología', { name: 'Agenda Cambiada' });
+        const result = await agendaService.updateAgenda('General de Cardiología', { name: 'Agenda Cambiada' });
 
-    expect(result).toBe(1);
-  });
+        expect(result).toBe(1);
+    });
 
-  it('should throw if name already exists', async () => {
-    AgendaRepository.findByUuidPlain.mockResolvedValue({ id: 1 });
-    AgendaRepository.findByName.mockResolvedValue({ id: 2 });
+    it('should throw if name already exists', async () => {
+        AgendaRepository.findByUuidPlain.mockResolvedValue({ id: 1 });
+        AgendaRepository.findByName.mockResolvedValue({ id: 2 });
 
-    await expect(
-      agendaService.updateAgenda('General de Cardiología', { name: 'Agenda Cambiada' })
-    ).rejects.toThrow(ConflictError);
-  });
+        await expect(agendaService.updateAgenda('General de Cardiología', { name: 'Agenda Cambiada' })).rejects.toThrow(
+            ConflictError
+        );
+    });
 });
 
 describe('deactivateAgenda', () => {
-  it('should deactivate agenda and cancel active period', async () => {
-    const activePeriod = {
-      agendaStatus: 'OPEN',
-      update: jest.fn(),
-    };
+    it('should deactivate agenda and cancel active period', async () => {
+        const activePeriod = {
+            agendaStatus: 'OPEN',
+            update: jest.fn(),
+        };
 
-    AgendaRepository.findByUuidPlain.mockResolvedValue({ id: 1 });
-    AgendaRepository.updateStatusById.mockResolvedValue([1]);
-    AgendaRepository.findActivePeriodByAgendaId.mockResolvedValue(activePeriod);
+        AgendaRepository.findByUuidPlain.mockResolvedValue({ id: 1 });
+        AgendaRepository.updateStatusById.mockResolvedValue([1]);
+        AgendaRepository.findActivePeriodByAgendaId.mockResolvedValue(activePeriod);
+        UserRepository.findByAgendaId.mockResolvedValue([]);
+        const result = await agendaService.deactivateAgenda('General de Cardiología');
 
-    const result = await agendaService.deactivateAgenda('General de Cardiología');
+        expect(result).toBe(1);
+        expect(activePeriod.update).toHaveBeenCalled();
+    });
 
-    expect(result).toBe(1);
-    expect(activePeriod.update).toHaveBeenCalled();
-  });
+    it('should throw if agenda not found', async () => {
+        AgendaRepository.findByUuidPlain.mockResolvedValue(null);
 
-  it('should throw if agenda not found', async () => {
-    AgendaRepository.findByUuidPlain.mockResolvedValue(null);
-
-    await expect(
-      agendaService.deactivateAgenda('General de Cardiología')
-    ).rejects.toThrow(NotFoundError);
-  });
+        await expect(agendaService.deactivateAgenda('General de Cardiología')).rejects.toThrow(NotFoundError);
+    });
 });
 
 describe('reactivateAgenda', () => {
@@ -149,13 +160,13 @@ describe('reactivateAgenda', () => {
   });
 });
 
-describe('updateAgendaPeriod', () => {
+describe('updateAgendaPeriodStatus', () => {
   it('should update successfully', async () => {
     AgendaRepository.findByUuidPlain.mockResolvedValue({ id: 1 });
     AgendaRepository.findPeriodByUuid.mockResolvedValue({ id: 2, agendaId: 1 });
     AgendaRepository.updatePeriodByUuid.mockResolvedValue([1]);
 
-    const result = await agendaService.updateAgendaPeriod('agendaUuid', 'periodUuid', {});
+    const result = await agendaService.updateAgendaPeriodStatus('agendaUuid', 'periodUuid', {});
 
     expect(result).toBe(1);
   });

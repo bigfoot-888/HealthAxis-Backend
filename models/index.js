@@ -231,6 +231,7 @@ module.exports = {
     UserDashboard,
     DashboardComponent,
     AuditLog,
+    ClinicalDocumentUser,
     Permission,
     RolePermission,
     associate,

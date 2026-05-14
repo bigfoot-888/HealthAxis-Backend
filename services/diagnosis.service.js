@@ -12,9 +12,10 @@ const ValidationError = require('../errors/ValidationError');
 const ConflictError = require('../errors/ConflictError')
 const { throwIfNotExists } = require('../utils/error-utils');
 
-const { createPrimaryFlowEvent } = require('../utils/flow-event');
+const { createPrimaryFlowEvent } = require('./patient-flow.service');
 
 const { getChanges } = require('../utils/log.utils');
+const { ensureUserIsActive } = require('./user.service');
 
 // ===== CREATE =====
 
@@ -36,6 +37,12 @@ async function createDiagnosis(diagnosisData, users = [], userId) {
         const patient = await PatientRepository.findByIdPlain(diagnosisData.patientId, { transaction: t });
         throwIfNotExists(patient, 'paciente', { id: diagnosisData.patientId });
 
+        for (const u of users) {
+            const user = await UserRepository.findById(u.userId, { transaction: t });
+            throwIfNotExists(user, 'usuario');
+            ensureUserIsActive(user);
+        }
+
         // Appointment exists
         if (diagnosisData.appointmentId) {
             const appointment = await AppointmentRepository.findById(diagnosisData.appointmentId, { transaction: t });
@@ -54,12 +61,6 @@ async function createDiagnosis(diagnosisData, users = [], userId) {
         const uniqueUserIds = new Set(userIds);
         if (uniqueUserIds.size !== userIds.length) throw new ValidationError('No puede haber usuarios duplicados');
 
-        // Users exist
-        for (const u of users) {
-            const user = await UserRepository.findById(u.userId, { transaction: t });
-            throwIfNotExists(user, 'usuario');
-        }
-
         const validRoles = ['AUTHOR', 'REVIEWER', 'VALIDATOR', 'CONTRIBUTOR'];
 
         // Valid role
@@ -73,6 +74,7 @@ async function createDiagnosis(diagnosisData, users = [], userId) {
 
         await DiagnosisRepository.associateUsers(diagnosis, users, { transaction: t });
 
+        // FLOW: create flow on creation
         await createPrimaryFlowEvent({
             patientId: diagnosis.patientId,
             type: 'DIAGNOSIS',
@@ -200,8 +202,8 @@ async function updateDiagnosisClinicalStatus(uuid, clinicalStatus, userId) {
 
         const previousClinicalStatus = diagnosis.clinicalStatus;
 
-        // Can't change the clinical status if it is resolved
-        if (previousClinicalStatus === 'RESOLVED') {
+        // CHECK: can't change the clinical status if it is finished
+        if (previousClinicalStatus === 'RESOLVED' || previousClinicalStatus === 'RULED_OUT') {
             throw new ConflictError('No se puede modificar un diagnóstico resuelto');
         }
 
@@ -234,6 +236,7 @@ async function updateDiagnosisClinicalStatus(uuid, clinicalStatus, userId) {
 
         const relevantStatuses = ['RESOLVED', 'RULED_OUT'];
 
+        // FLOW: create flow event if status is relevant
         if (clinicalStatus !== previousClinicalStatus && relevantStatuses.includes(clinicalStatus)) {
             let title = '';
 
@@ -274,6 +277,9 @@ async function updateDiagnosisRecordStatus(uuid, status, userId) {
         throwIfNotExists(diagnosis, 'diagnóstico', { uuid });
 
         const previousStatus = diagnosis.status;
+        // CHECK: treatment is not invalidated previously
+        if (previousStatus === 'VOID' || previousStatus === 'ENTERED_IN_ERROR')
+            throw new ConflictError('No se puede modificar un tratamiento invalidado');
 
         const [count] = await DiagnosisRepository.updateRecordStatusByUuid(uuid, status, { transaction: t });
 

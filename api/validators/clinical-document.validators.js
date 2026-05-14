@@ -16,33 +16,9 @@ const createClinicalDocumentRules = [
         .withMessage(
             'El tipo de documento debe estar entre: resumen clínico, nota de progreso, nota de consulta, archivo externo, y otros',
         ),
-    check('content')
-        .optional()
-        .custom((value) => {
-            if (typeof value === 'object') return true;
-            try {
-                JSON.parse(value);
-                return true;
-            } catch {
-                throw new ValidationError('El contenido debe ser JSON válido', { content: value });
-            }
-        }),
     check('users')
         .notEmpty()
         .withMessage('Los profesionales involucrados son obligatorios')
-        .custom(async (users) => {
-            try {
-                for (const user of users) {
-                     await userService.getUserById(user.user.id);
-                }
-                return true;
-            } catch (error) {
-                if (error instanceof NotFoundError) {
-                    throw new ValidationError('El usuario especificado no existe', { users: users });
-                }
-                throw error;
-            }
-        }),
 ];
 
 const editClinicalDocumentRules = [

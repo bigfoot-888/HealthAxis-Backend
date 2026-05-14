@@ -15,7 +15,7 @@ const { throwIfNotExists } = require('../utils/error-utils');
 const NotFoundError = require('../errors/NotFoundError');
 const ConflictError = require('../errors/ConflictError');
 
-const { createPrimaryFlowEvent } = require('../utils/flow-event');
+const { createPrimaryFlowEvent } = require('./patient-flow.service');
 const { getChanges } = require('../utils/log.utils');
 
 // ===== CREATE =====
@@ -42,6 +42,10 @@ async function createAppointment(appointmentData, userId) {
         throwIfNotExists(user, 'usuario', { userId: appointmentData.userId });
         ensureUserIsActive(user);
 
+        if (user.agenda.activePeriod.agendaStatus !== 'OPEN') {
+            throw new ConflictError('No se pueden crear citas en una agenda cuyo periodo actual no esté abierto');
+        }
+
         const appointment = await AppointmentRepository.create(
             {
                 ...appointmentData,
@@ -51,7 +55,7 @@ async function createAppointment(appointmentData, userId) {
             { transaction: t },
         );
 
-        // Create flow event
+        // FLOW: create flow event on creation
         await createPrimaryFlowEvent({
             patientId: appointment.patientId,
             type: 'APPOINTMENT',
@@ -262,8 +266,8 @@ async function updateAppointmentStatus(uuid, payload, userId) {
 
         const previousStatus = appointment.status;
 
-        if (previousStatus === 'COMPLETED') {
-            throw new ConflictError('No se puede modificar el estado de una cita completada');
+        if (previousStatus === 'COMPLETED' || previousStatus === 'CANCELLED' || previousStatus === 'NO_SHOW') {
+            throw new ConflictError('No se puede modificar el estado de una cita finalizada');
         }
 
         const [count] = await AppointmentRepository.updateByUuid(uuid, payload, {transaction: t});
@@ -294,6 +298,7 @@ async function updateAppointmentStatus(uuid, payload, userId) {
 
         const relevantStatuses = ['COMPLETED', 'CANCELLED', 'NO_SHOW'];
 
+        // FLOW: create flow event if status is relevant
         if (payload.status !== previousStatus && relevantStatuses.includes(payload.status)) {
             let title = '';
 

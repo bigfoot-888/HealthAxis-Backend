@@ -2,6 +2,8 @@ const { v4: uuidv4 } = require('uuid');
 const sequelize = require('../config/database');
 
 const AgendaRepository = require('../repositories/agenda.repository');
+const UserRepository = require('../repositories/user.repository');
+const AppointmentRepository = require('../repositories/appointment.repository');
 
 const ConflictError = require('../errors/ConflictError');
 const NotFoundError = require('../errors/NotFoundError');
@@ -74,11 +76,10 @@ async function createAgendaPeriod(agendaUuid, periodData) {
         // CHECK: closing date is not before opening date
         const closingDate = new Date(periodData.closingDate);
         closingDate.setHours(0, 0, 0, 0);
-        if (closingDate < openingDate) 
-            throw new ValidationError('La fecha de cierre no puede ser anterior a la de apertura', {closingDate,});
+        if (closingDate < openingDate)
+            throw new ValidationError('La fecha de cierre no puede ser anterior a la de apertura', { closingDate });
 
-
-        await AgendaRepository.deactivateActivePeriodsByAgendaId(resolvedAgenda.id, {transaction: t,});
+        await AgendaRepository.deactivateActivePeriodsByAgendaId(resolvedAgenda.id, { transaction: t });
         return await AgendaRepository.createPeriod(
             {
                 ...periodData,
@@ -145,26 +146,28 @@ async function getAgendaByName(name) {
  * Updates agenda data.
  */
 async function updateAgenda(uuid, agendaData) {
-    const agenda = await AgendaRepository.findByUuidPlain(uuid);
-    throwIfNotExists(agenda, 'agenda', { uuid });
+    return await sequelize.transaction(async t => {
+        const agenda = await AgendaRepository.findByUuidPlain(uuid);
+        throwIfNotExists(agenda, 'agenda', { uuid });
 
-    if (agendaData.name) {
-        const existing = await AgendaRepository.findByName(agendaData.name, uuid);
-        if (existing) {
-            throw new ConflictError('Error, ya existe una agenda con este nombre.', {
-                name: agendaData.name,
-                uuid,
-            });
+        if (agendaData.name) {
+            const existing = await AgendaRepository.findByName(agendaData.name, uuid);
+            if (existing) {
+                throw new ConflictError('Error, ya existe una agenda con este nombre.', {
+                    name: agendaData.name,
+                    uuid,
+                });
+            }
         }
-    }
 
-    const [count] = await AgendaRepository.updateByUuid(uuid, agendaData);
+        const [count] = await AgendaRepository.updateByUuid(uuid, agendaData);
 
-    if (count === 0) {
-        throw new NotFoundError('Error, no se han podido editar los datos de la agenda', { uuid });
-    }
+        if (count === 0) {
+            throw new NotFoundError('Error, no se han podido editar los datos de la agenda', { uuid });
+        }
 
-    return count;
+        return count;
+    });
 }
 
 /**
@@ -174,6 +177,18 @@ async function deactivateAgenda(uuid) {
     return await sequelize.transaction(async t => {
         const agenda = await AgendaRepository.findByUuidPlain(uuid, { transaction: t });
         const resolved = throwIfNotExists(agenda, 'agenda', { uuid });
+
+        // CHECK: no active appointments from the users in the agenda
+        const users = await UserRepository.findByAgendaId(resolved.id, {
+            transaction: t,
+        });
+        const userIds = users.map(u => u.id);
+        if (userIds.length !== 0) {
+            const activeAppointment = await AppointmentRepository.hasActiveAppointmentsByUserIds(userIds, {
+                transaction: t,
+            });
+            if (activeAppointment) throw new ConflictError('No se puede dar de baja una agenda con citas activas');
+        }
 
         const [count] = await AgendaRepository.updateStatusById(resolved.id, 'INACTIVE', { transaction: t });
 
@@ -195,37 +210,54 @@ async function deactivateAgenda(uuid) {
  * Reactivates an agenda.
  */
 async function reactivateAgenda(uuid) {
-    const agenda = await AgendaRepository.findByUuidPlain(uuid);
-    const resolved = throwIfNotExists(agenda, 'agenda', { uuid });
+    return await sequelize.transaction(async t => {
+        const agenda = await AgendaRepository.findByUuidPlain(uuid);
+        const resolved = throwIfNotExists(agenda, 'agenda', { uuid });
 
-    const [count] = await AgendaRepository.updateStatusById(resolved.id, 'ACTIVE');
+        const [count] = await AgendaRepository.updateStatusById(resolved.id, 'ACTIVE');
 
-    if (count === 0) {
-        throw new NotFoundError('Error, la agenda no ha podido ser reactivada', { uuid });
-    }
+        if (count === 0) {
+            throw new NotFoundError('Error, la agenda no ha podido ser reactivada', { uuid });
+        }
 
-    return count;
+        return count;
+    });
 }
 
 /**
- * Updates an agenda period.
+ * Updates an agenda period status.
  */
-async function updateAgendaPeriod(agendaUuid, periodUuid, periodData) {
-    const agenda = await AgendaRepository.findByUuidPlain(agendaUuid);
-    const resolvedAgenda = throwIfNotExists(agenda, 'agenda', { uuid: agendaUuid });
+async function updateAgendaPeriodStatus(agendaUuid, periodUuid, periodData) {
+    return await sequelize.transaction(async t => {
+        const agenda = await AgendaRepository.findByUuidPlain(agendaUuid);
+        const resolvedAgenda = throwIfNotExists(agenda, 'agenda', { uuid: agendaUuid });
 
-    const period = await AgendaRepository.findPeriodByUuid(periodUuid);
-    const resolvedPeriod = throwIfNotExists(period, 'periodo de agenda', { uuid: periodUuid });
+        const period = await AgendaRepository.findPeriodByUuid(periodUuid);
+        const resolvedPeriod = throwIfNotExists(period, 'periodo de agenda', { uuid: periodUuid });
 
-    // CHECK: the agenda period was actually updated
-    const [count] = await AgendaRepository.updatePeriodByUuid(periodUuid, periodData);
-    if (count === 0) {
-        throw new NotFoundError('Error, no se han podido editar los datos del periodo', {
-            periodUuid,
-        });
-    }
+        if (periodData.agendaStatus !== 'OPEN') {
+            const users = await UserRepository.findByAgendaId(resolvedAgenda.id, {
+                transaction: t,
+            });
+            const userIds = users.map(u => u.id);
+            if (userIds.length !== 0) {
+                const activeAppointment = await AppointmentRepository.hasActiveAppointmentsByUserIds(userIds, {
+                    transaction: t,
+                });
+                if (activeAppointment) throw new ConflictError('No se puede cerrar o cancelar un periodo de agenda con citas activas');
+            }
+        }
 
-    return count;
+        // CHECK: the agenda period was actually updated
+        const [count] = await AgendaRepository.updatePeriodByUuid(periodUuid, periodData);
+        if (count === 0) {
+            throw new NotFoundError('Error, no se han podido editar los datos del periodo', {
+                periodUuid,
+            });
+        }
+
+        return count;
+    });
 }
 
 module.exports = {
@@ -242,5 +274,5 @@ module.exports = {
     updateAgenda,
     deactivateAgenda,
     reactivateAgenda,
-    updateAgendaPeriod,
+    updateAgendaPeriodStatus,
 };

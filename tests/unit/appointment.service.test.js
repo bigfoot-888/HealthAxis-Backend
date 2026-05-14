@@ -28,7 +28,7 @@ jest.mock('@/repositories/audit-log.repository', () => ({
     createAuditLog: jest.fn(),
 }));
 
-jest.mock('@/utils/flow-event', () => ({
+jest.mock('@/services/patient-flow.service', () => ({
     createPrimaryFlowEvent: jest.fn(),
 }));
 
@@ -59,7 +59,7 @@ const AuditLogRepository = require('@/repositories/audit-log.repository');
 const { ensurePatientIsActive } = require('@/services/patient.service');
 const { ensureUserIsActive } = require('@/services/user.service');
 
-const { createPrimaryFlowEvent } = require('@/utils/flow-event');
+const { createPrimaryFlowEvent } = require('@/services/patient-flow.service');
 
 beforeEach(() => {
     jest.clearAllMocks();
@@ -82,8 +82,15 @@ const mockUserInactive = () => {
 describe('createAppointment', () => {
     it('should create appointment successfully', async () => {
         PatientRepository.findByIdPlain.mockResolvedValue({ id: 1, status: 'ACTIVE' });
-        UserRepository.findById.mockResolvedValue({ id: 2, agendaId: 10, status: 'ACTIVE' });
-
+        UserRepository.findById.mockResolvedValue({
+            id: 1,
+            status: 'ACTIVE',
+            agenda: {
+                activePeriod: {
+                    agendaStatus: 'OPEN',
+                },
+            },
+        });
         AppointmentRepository.create.mockResolvedValue({
             id: 100,
             patientId: 1,
@@ -124,7 +131,15 @@ describe('createAppointment', () => {
 
     it('should create flow event and audit log', async () => {
         PatientRepository.findByIdPlain.mockResolvedValue({ id: 1, status: 'ACTIVE' });
-        UserRepository.findById.mockResolvedValue({ id: 2, agendaId: 10, status: 'ACTIVE' });
+        UserRepository.findById.mockResolvedValue({
+            id: 1,
+            status: 'ACTIVE',
+            agenda: {
+                activePeriod: {
+                    agendaStatus: 'OPEN',
+                },
+            },
+        });
 
         AppointmentRepository.create.mockResolvedValue({
             id: 100,

@@ -19,6 +19,18 @@ const storage = multer.diskStorage({
     },
 });
 
-const upload = multer({ storage });
+const allowedMimeTypes = [
+    'application/pdf',
+];
+
+const fileFilter = (req, file, cb) => {
+    if (allowedMimeTypes.includes(file.mimetype)) {
+        cb(null, true);
+    } else {
+        cb(new Error('Tipo de archivo no permitido'));
+    }
+};
+
+const upload = multer({ storage, fileFilter });
 
 module.exports = { upload };

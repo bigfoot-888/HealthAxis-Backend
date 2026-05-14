@@ -77,11 +77,11 @@ async function reactivateAgendaController(req, res) {
     res.status(201).json(agenda);
 }
 
-async function updateAgendaPeriodController(req, res) {
+async function updateAgendaPeriodStatusController(req, res) {
     const agendaUuid = req.params.agendaUuid;
     const periodUuid = req.params.periodUuid;
     const { ...periodData } = req.body;
-    const period = agendaService.updateAgendaPeriod(agendaUuid, periodUuid, periodData);
+    const period = await agendaService.updateAgendaPeriodStatus(agendaUuid, periodUuid, periodData);
     res.status(201).json(period);
 }
 
@@ -97,7 +97,7 @@ module.exports = {
     cancelAgendaPeriodController,
     getAgendaController,
     updateAgendaController,
-    updateAgendaPeriodController,
+    updateAgendaPeriodStatusController,
 
     deactivateAgendaController,
     reactivateAgendaController,

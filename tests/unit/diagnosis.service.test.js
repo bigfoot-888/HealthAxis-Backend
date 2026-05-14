@@ -27,7 +27,7 @@ jest.mock('@/repositories/audit-log.repository', () => ({
     createAuditLog: jest.fn(),
 }));
 
-jest.mock('@/utils/flow-event', () => ({
+jest.mock('@/services/patient-flow.service', () => ({
     createPrimaryFlowEvent: jest.fn(),
 }));
 
@@ -37,6 +37,10 @@ jest.mock('@/config/database', () => ({
 
 jest.mock('uuid', () => ({
     v4: jest.fn(() => 'mock-uuid'),
+}));
+
+jest.mock('@/services/user.service', () => ({
+  ensureUserIsActive: jest.fn(),
 }));
 
 const diagnosisService = require('@/services/diagnosis.service');

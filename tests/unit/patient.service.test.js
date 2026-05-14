@@ -5,6 +5,7 @@ jest.mock('@/repositories/patient.repository', () => ({
     findByIdPlain: jest.fn(),
     updateStatusById: jest.fn(),
     updateByUuid: jest.fn(),
+    findByDni: jest.fn()
 }));
 
 jest.mock('@/repositories/appointment.repository', () => ({
@@ -19,12 +20,12 @@ jest.mock('@/repositories/clinical-document.repository', () => ({
     findByIdPlain: jest.fn(),
 }));
 
-jest.mock('@/repositories/flow-event.repository', () => ({
+jest.mock('@/repositories/patient-flow.repository', () => ({
     findById: jest.fn(),
     deleteById: jest.fn(),
 }));
 
-jest.mock('@/utils/flow-event', () => ({
+jest.mock('@/services/patient-flow.service', () => ({
     createPrimaryFlowEvent: jest.fn(),
     createSecondaryFlowEvent: jest.fn(),
 }));
@@ -46,8 +47,8 @@ const patientService = require('@/services/patient.service');
 
 const PatientRepository = require('@/repositories/patient.repository');
 const AppointmentRepository = require('@/repositories/appointment.repository');
-const FlowEventRepository = require('@/repositories/flow-event.repository');
-const { createPrimaryFlowEvent } = require('@/utils/flow-event');
+const FlowEventRepository = require('@/repositories/patient-flow.repository');
+const { createPrimaryFlowEvent } = require('@/services/patient-flow.service');
 
 const NotFoundError = require('@/errors/NotFoundError');
 const ValidationError = require('@/errors/ValidationError');

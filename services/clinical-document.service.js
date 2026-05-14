@@ -34,15 +34,16 @@ async function createClinicalDocument(documentData, attachments = [], users = []
         );
 
         await Promise.all(
-            attachments.map((attachmentId) =>
-                ClinicalDocumentRepository.addAttachment(document, attachmentId, { transaction: t }),
-            ),
+            attachments.map(attachmentId =>
+                ClinicalDocumentRepository.addAttachment(document, attachmentId, { transaction: t })
+            )
         );
-
+        // Simplification
+        const uniqueUsers = Array.from(new Map(users.map(u => [u.userId, u])).values());
         await Promise.all(
-            users.map(({ userId, role }) =>
-                ClinicalDocumentRepository.addUser(document, userId, { role }, { transaction: t }),
-            ),
+            uniqueUsers.map(({ userId, role }) =>
+                ClinicalDocumentRepository.addUser(document, userId, { role }, { transaction: t })
+            )
         );
 
         return document;

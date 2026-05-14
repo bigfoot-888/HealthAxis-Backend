@@ -7,19 +7,17 @@ const { PatientFlow, FlowEvent } = require('../models/index');
 const sequelize = require('../config/database');
 
 const ClinicalDocumentRepository = require('../repositories/clinical-document.repository');
-const FlowEventRepository = require('../repositories/flow-event.repository'); 
-const { createSecondaryFlowEvent } = require('../utils/flow-event');
-
+const FlowEventRepository = require('../repositories/patient-flow.repository');
+const { createSecondaryFlowEvent, createPrimaryFlowEvent } = require('./patient-flow.service');
+const PatientFlowRepository = require('./patient-flow.service');
 const AppError = require('../errors/AppError');
 const NotFoundError = require('../errors/NotFoundError');
 const ValidationError = require('../errors/ValidationError');
+const ConflictError = require('../errors/ConflictError');
 
 const { throwIfNotExists } = require('../utils/error-utils');
-const { createPrimaryFlowEvent } = require('../utils/flow-event');
 
-const Sequelize = require('sequelize');
 const { getChanges } = require('../utils/log.utils');
-const SequelizeValidationError = Sequelize.ValidationError;
 
 function createNHC(id) {
     return `${String(id).padStart(6, '0')}`;
@@ -41,57 +39,48 @@ function createNHC(id) {
  * @param {number} [userId=1] - ID of the user performing the action
  * @returns {Promise<Object>} Created patient (plain)
  */
-async function createPatient(patientData, userId = 1) {
-    try {
-        return await sequelize.transaction(async (t) => {
-            const patient = await PatientRepository.create(
-                {
-                    ...patientData,
-                    uuid: uuidv4(),
-                    nhc: 'placeholder',
-                },
-                { transaction: t },
-            );
+async function createPatient(patientData, userId) {
+    return await sequelize.transaction(async t => {
+        const sameDni = await PatientRepository.findByDni(patientData.dni, {transaction: t}); 
+        if (sameDni) throw new ConflictError("No pueden existir dos pacientes con el mismo DNI", {dni: patientData.dni}); 
 
-            patient.nhc = createNHC(patient.id);
-            await PatientRepository.save(patient, { transaction: t });
+        const patient = await PatientRepository.create(
+            {
+                ...patientData,
+                uuid: uuidv4(),
+                nhc: 'placeholder',
+            },
+            { transaction: t }
+        );
 
-            await PatientFlow.create({ patientId: patient.id }, { transaction: t });
+        patient.nhc = createNHC(patient.id);
+        await PatientRepository.save(patient, { transaction: t });
 
-            await createPrimaryFlowEvent({
-                patientId: patient.id,
-                type: 'PATIENT',
-                title: 'Paciente registrado en el sistema',
-                entityId: patient.id,
-                transaction: t,
-            });
+        // Create patient flow on patient creation
+        await PatientFlow.create({ patientId: patient.id }, { transaction: t });
 
-            // AUDIT: create log on patient creation
-            await AuditLogRepository.createAuditLog({
-                action: 'CREATED',
-                entityType: 'PATIENT',
-                entityId: patient.id,
-                userId,
-                patientId: patient.id,
-                meta: { nhc: patient.nhc },
-                transaction: t,
-            });
-
-            return await PatientRepository.findByUuidPlain(patient.uuid, { transaction: t });
+        // FLOW: create flow event on creation
+        await PatientFlowRepository.createPrimaryFlowEvent({
+            patientId: patient.id,
+            type: 'PATIENT',
+            title: 'Paciente registrado en el sistema',
+            entityId: patient.id,
+            transaction: t,
         });
 
-    } catch (err) {
-        if (err instanceof SequelizeValidationError) {
-            const details = err.errors.map(e => ({
-                field: e.path,
-                message: e.message,
-                value: e.value,
-            }));
+        // AUDIT: create log on patient creation
+        await AuditLogRepository.createAuditLog({
+            action: 'CREATED',
+            entityType: 'PATIENT',
+            entityId: patient.id,
+            userId,
+            patientId: patient.id,
+            meta: { nhc: patient.nhc },
+            transaction: t,
+        });
 
-            throw new ValidationError('Error de validación', details);
-        }
-        throw err;
-    }
+        return await PatientRepository.findByUuidPlain(patient.uuid, { transaction: t });
+    });
 }
 
 /**
@@ -105,7 +94,7 @@ async function createPatient(patientData, userId = 1) {
  */
 async function importPatients(patients) {
     try {
-        const patientsWithUuid = patients.map((patient) => ({
+        const patientsWithUuid = patients.map(patient => ({
             ...patient,
             uuid: uuidv4(),
         }));
@@ -135,7 +124,7 @@ async function importPatients(patients) {
  * @throws {NotFoundError} If parent event or document does not exist
  */
 async function createSecondaryNode(parentEventId, clinicalDocumentId, userId) {
-    return await sequelize.transaction(async (t) => {
+    return await sequelize.transaction(async t => {
         // 1. Get parent event
         const parentEvent = await FlowEvent.findByPk(parentEventId, { transaction: t });
         throwIfNotExists(parentEvent, 'evento de flujo', { parentEventId });
@@ -155,7 +144,7 @@ async function createSecondaryNode(parentEventId, clinicalDocumentId, userId) {
             parentId: parentEvent.id,
             transaction: t,
         });
-        
+
         return flowEvent;
     });
 }
@@ -239,8 +228,8 @@ async function getPatientDetail(uuid) {
  * - Orders logs by creation date (most recent first)
  *
  * @param {string} uuid - Patient UUID
- * @param {number} page 
- * @param {number} limit 
+ * @param {number} page
+ * @param {number} limit
  * @returns {Promise<Array<Object>>} List of audit logs
  * @throws {NotFoundError} If patient does not exist
  */
@@ -249,8 +238,8 @@ async function getPatientHistory(uuid, page, limit) {
     throwIfNotExists(patient, 'paciente', { uuid });
 
     const offset = (page - 1) * limit;
-    const {rows, count} = await AuditLogRepository.findByPatientId(patient.id, { limit, offset });
-    return {logs: rows, total: count};
+    const { rows, count } = await AuditLogRepository.findByPatientId(patient.id, { limit, offset });
+    return { logs: rows, total: count };
 }
 
 /**
@@ -307,7 +296,7 @@ async function getPatientFlow(uuid) {
         }
     }
 
-    // 
+    //
     const [appointments, diagnoses, treatments, documents] = await Promise.all([
         groupedIds.APPOINTMENT.length ? PatientRepository.findAppointmentsByIds(groupedIds.APPOINTMENT) : [],
         groupedIds.DIAGNOSIS.length ? PatientRepository.findDiagnosesByIds(groupedIds.DIAGNOSIS) : [],
@@ -315,12 +304,12 @@ async function getPatientFlow(uuid) {
         groupedIds.CLINICAL_DOCUMENT.length ? ClinicalDocumentRepository.findByIds(groupedIds.CLINICAL_DOCUMENT) : [],
     ]);
 
-    const appointmentMap = Object.fromEntries(appointments.map((a) => [a.id, a]));
-    const diagnosisMap = Object.fromEntries(diagnoses.map((d) => [d.id, d]));
-    const treatmentMap = Object.fromEntries(treatments.map((t) => [t.id, t]));
-    const documentMap = Object.fromEntries(documents.map((d) => [d.id, d]));
+    const appointmentMap = Object.fromEntries(appointments.map(a => [a.id, a]));
+    const diagnosisMap = Object.fromEntries(diagnoses.map(d => [d.id, d]));
+    const treatmentMap = Object.fromEntries(treatments.map(t => [t.id, t]));
+    const documentMap = Object.fromEntries(documents.map(d => [d.id, d]));
 
-    const nodes = events.map((event) => {
+    const nodes = events.map(event => {
         let entity = null;
 
         switch (event.type) {
@@ -362,8 +351,8 @@ async function getPatientFlow(uuid) {
     });
 
     const edges = events
-        .filter((event) => event.parentEventId)
-        .map((event) => ({
+        .filter(event => event.parentEventId)
+        .map(event => ({
             id: `e-${event.parentEventId}-${event.id}`,
             source: String(event.parentEventId),
             target: String(event.id),
@@ -385,12 +374,12 @@ async function getPatientFlow(uuid) {
  * Deactivates a patient and creates a corresponding flow event.
  *
  * @param {number} uuid - Patient UUID
- * @param {number} userId 
+ * @param {number} userId
  * @returns {Promise<number>} Number of affected rows
  * @throws {NotFoundError}
  */
 async function deactivatePatient(uuid, userId) {
-    return await sequelize.transaction(async (t) => {
+    return await sequelize.transaction(async t => {
         const patient = await PatientRepository.findByUuidPlain(uuid, { transaction: t });
         if (!patient) {
             throw new NotFoundError('Paciente no encontrado', { uuid });
@@ -401,7 +390,7 @@ async function deactivatePatient(uuid, userId) {
         });
 
         if (activeAppointments) {
-            throw new ValidationError('No se puede dar de baja a un usuario con citas activas.', 400, {
+            throw new ValidationError('No se puede dar de baja a un usuario con citas activas.', {
                 activeAppointments,
             });
         }
@@ -412,6 +401,7 @@ async function deactivatePatient(uuid, userId) {
             throw new NotFoundError('Error, el paciente no ha podido ser desactivado', { patientId: patient.id, uuid });
         }
 
+        // FLOW: create flow event on inactive
         await createPrimaryFlowEvent({
             patientId: patient.id,
             type: 'PATIENT',
@@ -439,7 +429,7 @@ async function deactivatePatient(uuid, userId) {
  * Reactivates a patient and creates a corresponding flow event.
  *
  * @param {number} uuid - Patient UUID
- * @param {number} userId 
+ * @param {number} userId
  * @returns {Promise<number>} Number of affected rows
  * @throws {NotFoundError}
  */
@@ -457,6 +447,7 @@ async function reactivatePatient(uuid, userId) {
             throw new NotFoundError('Error, el paciente no ha podido ser reactivado', { patientId: patient.id, uuid });
         }
 
+        // FLOW: create flow event on reactivation
         await createPrimaryFlowEvent({
             patientId: patient.id,
             type: 'PATIENT',
@@ -484,7 +475,7 @@ async function reactivatePatient(uuid, userId) {
  * Updates patient data by UUID.
  *
  * @param {string} uuid - Patient UUID
- * @param {number} userId 
+ * @param {number} userId
  * @returns {Promise<number>} Number of affected rows
  * @throws {NotFoundError}
  */
@@ -497,8 +488,7 @@ async function updatePatient(uuid, patientData, userId) {
 
         const [count] = await PatientRepository.updateByUuid(uuid, patientData);
 
-        if (count === 0) 
-            throw new NotFoundError('Error, no se han podido editar los datos del paciente', { uuid });
+        if (count === 0) throw new NotFoundError('Error, no se han podido editar los datos del paciente', { uuid });
 
         // AUDIT: create log on patient update
         if (Object.keys(changes).length > 0) {
@@ -519,7 +509,6 @@ async function updatePatient(uuid, patientData, userId) {
 
 // ===== DELETES =====
 
-
 /**
  * Deletes a secondary FlowEvent from the patient flow.
  *
@@ -534,7 +523,7 @@ async function updatePatient(uuid, patientData, userId) {
  * @throws {NotFoundError} If FlowEvent does not exist
  */
 async function deleteFlowEvent(id) {
-    return await sequelize.transaction(async (t) => {
+    return await sequelize.transaction(async t => {
         const event = await FlowEventRepository.findById(id, { transaction: t });
         throwIfNotExists(event, 'evento de flujo', { id });
 

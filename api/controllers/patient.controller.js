@@ -16,7 +16,7 @@ async function createPatientController(req, res) {
         dni,
         dateOfBirth,
     };
-    const newPatient = await patientService.createPatient(patientData);
+    const newPatient = await patientService.createPatient(patientData, req.user.id);
     res.status(201).json(newPatient);
 }
 

@@ -43,6 +43,23 @@ async function hasActiveAppointmentsByUserId(userId, options = {}) {
     return result;
 }
 
+
+async function hasActiveAppointmentsByUserIds(userIds, options = {}) {
+    const result = await Appointment.findOne({
+        where: {
+            userId: {
+                [Op.in]: userIds,
+            },
+            status: ACTIVE_APPOINTMENT_STATUSES,
+        },
+
+        attributes: ['id'],
+        ...options,
+    });
+
+    return result;
+}
+
 async function hasActiveAppointmentsByPatientId(patientId, options = {}) {
     const result = await Appointment.findOne({
         where: {
@@ -186,6 +203,7 @@ module.exports = {
     searchAppointments,
     hasActiveAppointmentsByUserId,
     hasActiveAppointmentsByPatientId,
+    hasActiveAppointmentsByUserIds,
     findById,
     updateByUuid,
     updateEndTime,

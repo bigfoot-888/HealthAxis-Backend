@@ -50,7 +50,7 @@ router.patch(
     validateUuidParam('periodUuid'),
     updateAgendaPeriodRules,
     validateRequest,
-    asyncHandler(agendaController.updateAgendaPeriodController),
+    asyncHandler(agendaController.updateAgendaPeriodStatusController),
 );
 
 module.exports = router;

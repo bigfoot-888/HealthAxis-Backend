@@ -1,4 +1,4 @@
-const { ClinicalDocument, ClinicalAttachment, User } = require('../models/index');
+const { ClinicalDocument, ClinicalAttachment, User, ClinicalDocumentUser } = require('../models/index');
 
 const { Op, literal } = require('sequelize');
 const { escapeLike } = require('../utils/query-utils');

@@ -7,9 +7,12 @@ const AuditLogRepository = require('../repositories/audit-log.repository');
 const UserRepository = require('../repositories/user.repository');
 const NotFoundError = require('../errors/NotFoundError');
 const ConflictError = require('../errors/ConflictError');
+const ValidationError = require('../errors/ValidationError');
 const { throwIfNotExists } = require('../utils/error-utils');
-const {createPrimaryFlowEvent} = require('../utils/flow-event');
+const {createPrimaryFlowEvent} = require('./patient-flow.service');
 const { getChanges } = require('../utils/log.utils');
+const { ensurePatientIsActive } = require('./patient.service');
+const { ensureUserIsActive } = require('./user.service');
 
 /**
  * Creates a new treatment and associates users and diagnoses within a single transaction.
@@ -25,13 +28,52 @@ const { getChanges } = require('../utils/log.utils');
  * @returns {Promise<Object>} Fully populated Treatment instance
  */
 async function createTreatment(treatmentData, users = [], userId) {
-    return await sequelize.transaction(async (t) => {
+    return await sequelize.transaction(async t => {
+        const patient = await PatientRepository.findByIdPlain(treatmentData.patientId, { transaction: t });
+        throwIfNotExists(patient, 'paciente', {
+            patientId: treatmentData.patientId,
+        });
+        ensurePatientIsActive(patient);
+
+        for (const u of users) {
+            const user = await UserRepository.findById(u.userId, { transaction: t });
+            throwIfNotExists(user, 'usuario');
+            ensureUserIsActive(user);
+        }
+
+        // Appointment exists
+        if (treatmentData.appointmentId) {
+            const appointment = await AppointmentRepository.findById(treatmentData.appointmentId, { transaction: t });
+            throwIfNotExists(appointment, 'cita', { id: treatmentData.appointmentId });
+
+            // Check for inconsistencies
+            if (appointment.patientId !== treatmentData.patientId)
+                throw new ValidationError('La cita no pertenece al paciente');
+        }
+
+        // At least one user
+        if (!users || users.length === 0) throw new ValidationError('Debe haber al menos un profesional');
+
+        // No duplicates
+        const userIds = users.map((u) => u.userId);
+        const uniqueUserIds = new Set(userIds);
+        if (uniqueUserIds.size !== userIds.length) throw new ValidationError('No puede haber usuarios duplicados');
+
+        const validRoles = ['AUTHOR', 'REVIEWER', 'VALIDATOR', 'CONTRIBUTOR'];
+
+        // Valid role
+        for (const u of users) {
+            if (!validRoles.includes(u.role)) {
+                throw new ValidationError(`Rol inválido: ${u.role}`);
+            }
+        }
         const treatment = await TreatmentRepository.create(treatmentData, { transaction: t });
 
         if (users.length > 0) {
             await TreatmentRepository.associateUsers(treatment, users, { transaction: t });
         }
 
+        // FLOW: create flow on creation
         await createPrimaryFlowEvent({
             patientId: treatment.patientId,
             type: 'TREATMENT',
@@ -39,7 +81,7 @@ async function createTreatment(treatmentData, users = [], userId) {
             entityId: treatment.id,
             transaction: t,
         });
-        
+
         // AUDIT: create log on treatment creation
         await AuditLogRepository.createAuditLog({
             action: 'CREATED',
@@ -140,14 +182,17 @@ async function searchTreatments({ patient, name }) {
  * @throws {NotFoundError} If no treatment was updated
  */
 async function updateTreatmentClinicalStatus(uuid, clinicalStatus, userId) {
-    return await sequelize.transaction(async (t) => {
+    return await sequelize.transaction(async t => {
         const treatment = await TreatmentRepository.findByUuidPlain(uuid, { transaction: t });
         throwIfNotExists(treatment, 'tratamiento', { uuid });
 
         const previousClinicalStatus = treatment.clinicalStatus;
-
-        if (previousClinicalStatus === 'COMPLETED' || previousClinicalStatus === 'GIVEN') {
-            throw new ConflictError('No se puede modificar un tratamiento resuelto');
+        if (
+            previousClinicalStatus === 'COMPLETED' ||
+            previousClinicalStatus === 'GIVEN' ||
+            previousClinicalStatus === 'DISCONTINUED'
+        ) {
+            throw new ConflictError('No se puede modificar un tratamiento finalizado');
         }
 
         const [count] = await TreatmentRepository.updateClinicalStatus(uuid, clinicalStatus, { transaction: t });
@@ -178,6 +223,7 @@ async function updateTreatmentClinicalStatus(uuid, clinicalStatus, userId) {
 
         const relevantStatuses = ['COMPLETED', 'DISCONTINUED'];
 
+        // FLOW: create flow on relevant status change
         if (clinicalStatus !== previousClinicalStatus && relevantStatuses.includes(clinicalStatus)) {
             let title = '';
 
@@ -212,12 +258,16 @@ async function updateTreatmentClinicalStatus(uuid, clinicalStatus, userId) {
  * @returns {Promise<number>} Number of affected rows
  * @throws {NotFoundError} If no treatment was updated
  */
-async function updateTreatmentStatus(uuid, newStatus, userId) {
+async function updateTreatmentRecordStatus(uuid, newStatus, userId) {
     return await sequelize.transaction(async (t) => {
         const treatment = await TreatmentRepository.findByUuidPlain(uuid, { transaction: t });
         throwIfNotExists(treatment, 'tratamiento', { uuid });
 
         const previousStatus = treatment.status;
+
+        // CHECK: treatment is not invalidated previously
+        if (previousStatus === 'VOID' || previousStatus === 'ENTERED_IN_ERROR')
+            throw new ConflictError('No se puede modificar un tratamiento invalidado');
 
         const [count] = await TreatmentRepository.updateStatus(uuid, newStatus, { transaction: t });
 
@@ -327,6 +377,6 @@ module.exports = {
     getTreatmentPlain,
     searchTreatments,
     updateTreatmentClinicalStatus,
-    updateTreatmentStatus,
+    updateTreatmentRecordStatus,
     updateTreatment,
 };

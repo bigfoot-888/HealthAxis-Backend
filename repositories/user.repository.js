@@ -1,4 +1,4 @@
-const { User, Role, UserDashboard, DashboardComponent, Permission, Agenda } = require('../models/index');
+const { User, Role, UserDashboard, DashboardComponent, Permission, Agenda, AgendaPeriod } = require('../models/index');
 const { Op } = require('sequelize');
 const { escapeLike } = require('../utils/query-utils');
 
@@ -100,7 +100,10 @@ async function searchUsers({ name, limit = 20 }) {
 async function findByUuid(uuid, options = {}) {
     return await User.findOne({
         where: { uuid },
-        include: [{ model: Role, as: 'roles' }, {model: Agenda, as: "agenda"}],
+        include: [
+            { model: Role, as: 'roles' },
+            { model: Agenda, as: 'agenda' },
+        ],
         ...options,
     });
 }
@@ -114,9 +117,25 @@ async function findByUuidPlain(uuid, options = {}) {
 
 async function findById(id, options = {}) {
     return await User.findByPk(id, {
-        include: [{ model: Role, as: 'roles' }, {model: Agenda, as: 'agenda'}],
+        include: [
+            { model: Role, as: 'roles' },
+            {
+                model: Agenda,
+                as: 'agenda',
+                include: [
+                    {
+                        model: AgendaPeriod,
+                        as: 'activePeriod',
+                    },
+                ],
+            },
+        ],
         ...options,
     });
+}
+
+async function findByAgendaId(agendaId, options = {}) {
+    return await User.findAll({ where: { agendaId }, ...options });
 }
 
 async function findByIdPlain(id, options = {}) {
@@ -162,7 +181,7 @@ async function updateStatusById(id, status, options = {}) {
         {
             where: { id },
             ...options,
-        },
+        }
     );
 }
 
@@ -197,4 +216,5 @@ module.exports = {
     updateStatusById,
 
     updatePassword,
+    findByAgendaId,
 };

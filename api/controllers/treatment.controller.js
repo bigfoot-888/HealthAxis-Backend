@@ -57,7 +57,7 @@ async function updateTreatmentStatusController(req, res) {
     const { uuid } = req.params;
     const { status } = req.body;
 
-    const updated = await treatmentService.updateTreatmentStatus(uuid, status, req.user.id);
+    const updated = await treatmentService.updateTreatmenRecordStatus(uuid, status, req.user.id);
     res.status(200).json({ updated });
 }
 

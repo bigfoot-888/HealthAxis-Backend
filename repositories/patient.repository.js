@@ -22,6 +22,10 @@ async function findAllPlain(options = {}) {
     return await Patient.findAll(options);
 }
 
+async function findByNhc(nhc, options={}){
+    return await Patient.findOne({where: {nhc}, ...options})
+}
+
 async function searchFiltered(query, limit = 20, options = {}) {
     if (!query || query.length < 2) return [];
 
@@ -173,6 +177,7 @@ module.exports = {
     searchFiltered,
     searchPatients,
     findByDni,
+    findByNhc,
     findByUuidPlain,
     findByUuidDetailed,
     findByIdPlain,

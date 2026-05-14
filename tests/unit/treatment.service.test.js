@@ -9,7 +9,7 @@ jest.mock('@/repositories/treatment.repository', () => ({
     updateResolvedAt: jest.fn(), 
 }));
 
-jest.mock('@/utils/flow-event', () => ({
+jest.mock('@/services/patient-flow.service', () => ({
   createPrimaryFlowEvent: jest.fn(),
 }));
 
@@ -23,6 +23,7 @@ jest.mock('@/repositories/appointment.repository', () => ({
 
 jest.mock('@/repositories/patient.repository', () => ({
     findByUuidPlain: jest.fn(),
+    findByIdPlain: jest.fn()
 }));
 
 jest.mock('@/repositories/audit-log.repository', () => ({
@@ -44,6 +45,7 @@ const treatmentService = require('@/services/treatment.service');
 const TreatmentRepository = require('@/repositories/treatment.repository');
 const PatientRepository = require('@/repositories/patient.repository');
 const AuditLogRepository = require('@/repositories/audit-log.repository');
+const UserRepository = require('@/repositories/user.repository');
 
 const NotFoundError = require('@/errors/NotFoundError');
 
@@ -53,6 +55,14 @@ beforeEach(() => {
 
 describe('createTreatment', () => {
     it('should create treatment successfully', async () => {
+        PatientRepository.findByIdPlain.mockResolvedValue({
+            id: 134,
+            status: 'ACTIVE',
+        });
+        UserRepository.findById.mockResolvedValue({
+            id: 1,
+            status: 'ACTIVE',
+        });
         TreatmentRepository.create.mockResolvedValue({
             id: 1,
             patientId: 13,
@@ -60,7 +70,7 @@ describe('createTreatment', () => {
 
         TreatmentRepository.findByUuidDetailed.mockResolvedValue({ id: 1 });
 
-        const result = await treatmentService.createTreatment({ patientId: 134 }, [], 134);
+        const result = await treatmentService.createTreatment({ patientId: 134 }, [{ userId: 1, role: 'AUTHOR' }], 134);
 
         expect(result).toBeDefined();
         expect(TreatmentRepository.create).toHaveBeenCalled();
@@ -68,14 +78,22 @@ describe('createTreatment', () => {
     });
 
     it('should associate users if provided', async () => {
+        PatientRepository.findByIdPlain.mockResolvedValue({
+            id: 23,
+            status: 'ACTIVE',
+        });
         TreatmentRepository.create.mockResolvedValue({
             id: 1,
             patientId: 534,
         });
+        UserRepository.findById.mockResolvedValue({
+            id: 1,
+            status: 'ACTIVE',
+        });
 
         TreatmentRepository.findByUuidDetailed.mockResolvedValue({ id: 1 });
 
-        await treatmentService.createTreatment({ patientId: 23 }, [{ user: { id: 1, role: 'AUTHOR' } }], 432);
+        await treatmentService.createTreatment({ patientId: 23 }, [{ userId: 1, role: 'AUTHOR' }], 432);
 
         expect(TreatmentRepository.associateUsers).toHaveBeenCalled();
     });
@@ -140,7 +158,7 @@ describe('updateTreatmentClinicalStatus', () => {
     });
 });
 
-describe('updateTreatmentStatus', () => {
+describe('updateTreatmentRecordStatus', () => {
     it('should update successfully', async () => {
         TreatmentRepository.findByUuidPlain.mockResolvedValue({
             id: 1,
@@ -150,7 +168,7 @@ describe('updateTreatmentStatus', () => {
 
         TreatmentRepository.updateStatus.mockResolvedValue([1]);
 
-        const result = await treatmentService.updateTreatmentStatus('treatmentUuid', 'VOID', 777);
+        const result = await treatmentService.updateTreatmentRecordStatus('treatmentUuid', 'VOID', 777);
 
         expect(result).toBe(1);
     });

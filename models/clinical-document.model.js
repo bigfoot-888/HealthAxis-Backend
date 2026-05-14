@@ -28,10 +28,6 @@ const ClinicalDocument = sequelize.define(
             allowNull: false,
             defaultValue: 'OTHER',
         },
-        content: {
-            type: DataTypes.JSONB,
-            allowNull: true,
-        },
         status: {
             type: DataTypes.ENUM('DRAFTED', 'FINAL', 'AMENDED', 'ARCHIVED', 'VOID'),
             allowNull: false,
