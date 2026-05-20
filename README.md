@@ -1,53 +1,51 @@
-= Guía de instalación
+# Guía de instalación
 
-En este último anexo se describen los pasos para instalar y ejecutar el proyecto. 
+En este último anexo se describen los pasos para instalar y ejecutar el proyecto.
 
-Los repositorios con el código se pueden encontrar en: 
+Los repositorios con el código fuente se pueden encontrar en:
 
-- *Backend*: https://github.com/bigfoot-888/HealthAxis-Backend
+- Backend: [HealthAxis-Backend](https://github.com/bigfoot-888/HealthAxis-Backend)
+- Frontend: [HealthAxis-Frontend](https://github.com/bigfoot-888/HealthAxis-Frontend)
 
-- *Frontend*: https://github.com/bigfoot-888/HealthAxis-Frontend
-
-1. *Requisitos previos*
+## 1. Requisitos previos
 
 El sistema ha sido probado en un entorno con:
-- Node.js 
-- npm 
-- PostgreSQL 
-- Redis 
+
+- Node.js
+- npm
+- PostgreSQL
+- Redis
 
 Antes de ejecutar el proyecto, es necesario tener PostgreSQL y Redis instalados y en ejecución.
 
-*Node.js*: https://nodejs.org/.
+- Node.js: https://nodejs.org/
+- PostgreSQL: https://www.postgresql.org/download/
+- Redis: https://redis.io/downloads/
 
-*PostgreSQL*: https://www.postgresql.org/download/.
+## 2. Clonado de repositorios
 
-*Redis*: https://redis.io/downloads/.
+Crea una carpeta donde almacenar el proyecto y ejecuta en la terminal los siguientes comandos:
 
-2. *Clonado de repositorios*
-
-Crea una carpeta donde almacenar el proyecto, y ejecutar en la terminal los siguientes comandos.
-
-```
+```bash
 git clone https://github.com/bigfoot-888/HealthAxis-Frontend.git frontend
-```,
-
 ```
+
+```bash
 git clone https://github.com/bigfoot-888/HealthAxis-Backend.git backend
-```,
-
-3. *Configuración del backend*
-
-Primero ejecuta los siguientes comandos. 
-
 ```
+
+## 3. Configuración del backend
+
+Primero ejecuta los siguientes comandos:
+
+```bash
 cd backend
 npm install
-```,
-
-Luego crea el archivo "*.env*" con las variables de entorno en la raíz de la carpeta backend. Este debe tener el siguiente contenido y estructura:
-
 ```
+
+Luego crea el archivo `.env` en la raíz de la carpeta `backend`. Este debe tener el siguiente contenido y estructura:
+
+```env
 PORT=3000
 PGUSER=<usuario_postgres>
 PGPASSWORD=<password_postgres>
@@ -56,47 +54,54 @@ PGPORT=5432
 PGDATABASE=<nombre_bd>
 SESSION_SECRET=<string_largo_aleatorio>
 REDIS_URL=redis://localhost:6379
-```,
+```
 
-Asegúrate de tener los puertos especificados en la estructura libres. 
+Asegúrate de que los puertos especificados en el archivo `.env` estén libres.
 
-4. *Creación de la base de datos*
+## 4. Creación de la base de datos
 
 Crea una base de datos PostgreSQL vacía con el nombre definido en la variable `PGDATABASE`:
 
-```
+```bash
 createdb <nombre_bd>
-```,
+```
 
 Alternativamente, desde PostgreSQL:
 
-```
+```sql
 CREATE DATABASE <nombre_bd>;
-```,
-
-5. *Inicialización del sistema*
-
-Crea una carpeta llamada "uploads" en la raíz de la carpeta del backend. 
-
 ```
-mkdir -p uploads // Linux / Max
-mkdir uploads    // Windows
-```,
 
-Inicializa las tablas y datos de prueba:
+## 5. Inicialización del sistema
 
+Crea una carpeta llamada `uploads` en la raíz de la carpeta del backend:
+
+```bash
+# Linux / Mac
+mkdir -p uploads
+
+# Windows
+mkdir uploads
 ```
+
+Inicializa las tablas y los datos de prueba:
+
+```bash
 node utils/init-db.js
-```,
+```
 
 Este comando elimina y recrea las tablas de la base de datos, además de insertar datos de prueba.
 
-6. *Ejecución del backend*
+## 6. Ejecución del backend
 
-Desde la raíz de la carpeta del backend ejecuta:
+Desde la raíz de la carpeta `backend` ejecuta:
 
-```
+```bash
 npx nodemon ./index.js
-```,
+```
 
-El backend quedará disponible en http://localhost:3000.
+El backend quedará disponible en:
+
+```text
+http://localhost:3000
+```
