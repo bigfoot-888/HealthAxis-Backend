@@ -12,13 +12,12 @@ function escapeLike(str) {
  * Appends a 'fullName' property to any entity object.
  * Fallbacks are in place to support both legacy (name/surname)
  * and standard (firstName/lastName) naming conventions.
- * @param {Object} entity - The database record (User, Patient, etc.)
+ * @param {Object} entity - The database record
  * @returns {Object} The entity with a merged fullName property
  */
 function formatFullName(entity) {
     if (!entity) return entity;
 
-    // Safely grab the names, preferring the new convention if it exists
     const first = entity.firstName || entity.name || '';
     const last = entity.lastName || entity.surname || '';
 

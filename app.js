@@ -10,7 +10,6 @@ const cors = require('cors');
 
 const morgan = require('morgan');
 
-// Log all requests to the console in 'dev' format
 app.use(morgan('dev'));
 
 app.use(express.urlencoded({ extended: true }));
@@ -31,15 +30,15 @@ app.use(
             }
         },
         credentials: true,
-    }),
+    })
 );
 
 app.get('/api/test', (req, res) => {
-    res.json({ message: 'Backend reachable!' });
+    res.json({ message: 'Backend reachable.' });
 });
 
-const sessionMiddleware = require('./middlewares/session.middleware.js')
-const attachUserMiddleware = require('./middlewares/attach-user.middleware.js')
+const sessionMiddleware = require('./middlewares/session.middleware.js');
+const attachUserMiddleware = require('./middlewares/attach-user.middleware.js');
 
 app.set('trust proxy', 1);
 app.use(sessionMiddleware());
@@ -52,15 +51,15 @@ const agendaRouter = require('./api/routes/agenda.routes.js');
 const appointmentRouter = require('./api/routes/appointment.routes.js');
 const diagnosisRouter = require('./api/routes/diagnosis.routes.js');
 const treatmentRouter = require('./api/routes/treatment.routes.js');
-const clinicalDocumentRouter = require('./api/routes/clinical-document.routes.js'); 
-const dashboardRouter = require('./api/routes/dashboard.routes.js'); 
-const fhirRouter = require('./api/routes/fhir.routes.js'); 
-const roleRouter = require('./api/routes/role.routes.js'); 
+const clinicalDocumentRouter = require('./api/routes/clinical-document.routes.js');
+const dashboardRouter = require('./api/routes/dashboard.routes.js');
+const fhirRouter = require('./api/routes/fhir.routes.js');
+const roleRouter = require('./api/routes/role.routes.js');
 
 const errorMiddleware = require('./middlewares/error-handler.middleware');
 const error404Middleware = require('./middlewares/error404-handler.middleware.js');
 
-app.use('/api/roles', roleRouter); 
+app.use('/api/roles', roleRouter);
 app.use('/api/users', userRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/patients', patientRouter);
@@ -68,10 +67,10 @@ app.use('/api/agendas', agendaRouter);
 app.use('/api/appointments', appointmentRouter);
 app.use('/api/diagnoses', diagnosisRouter);
 app.use('/api/treatments', treatmentRouter);
-app.use('/api/clinical-documents', clinicalDocumentRouter); 
-app.use('/api/dashboards', dashboardRouter); 
+app.use('/api/clinical-documents', clinicalDocumentRouter);
+app.use('/api/dashboards', dashboardRouter);
 
-app.use('/api/fhir', fhirRouter); 
+app.use('/api/fhir', fhirRouter);
 
 app.use(errorMiddleware);
 app.use(error404Middleware);

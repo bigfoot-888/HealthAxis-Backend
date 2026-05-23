@@ -11,8 +11,6 @@ const fhirAppointmentController = require('../controllers/fhir/fhir.appointment.
 const asyncHandler = require('../../middlewares/async-handler.middleware');
 const { validateUuidParam } = require('../../middlewares/valid-uuid.middleware');
 
-// ===== READ =====
-
 router.get('/patients/:uuid', validateUuidParam(), asyncHandler(fhirPatientController.getPatient));
 router.get('/patients', asyncHandler(fhirPatientController.searchPatients));
 

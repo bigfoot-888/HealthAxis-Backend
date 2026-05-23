@@ -12,17 +12,13 @@ const {requireAuth} = require('../../middlewares/auth.middleware');
 
 router.use(requireAuth); 
 
-// ===== CREATE =====
 router.post('/', requirePermission("diagnosis:create"), createDiagnosisRules, validateRequest, asyncHandler(diagnosisController.createDiagnosisController));
 
-// ===== READ =====
 router.get('/', requirePermission("diagnosis:read"), asyncHandler(diagnosisController.getDiagnosesController));
 router.get('/filtered', requirePermission("diagnosis:read"), asyncHandler(diagnosisController.getFilteredDiagnosesController));
 
 router.get('/:uuid', requirePermission("diagnosis:read"), validateUuidParam('uuid'), asyncHandler(diagnosisController.getDiagnosisController));
 router.get('/:uuid/plain', requirePermission("diagnosis:read"), validateUuidParam('uuid'), asyncHandler(diagnosisController.getDiagnosisPlainController));
-
-// ===== UPDATE =====
 
 router.put(
     '/:uuid',
