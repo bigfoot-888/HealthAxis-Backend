@@ -1,7 +1,5 @@
 # Guía de instalación
 
-En este último anexo se describen los pasos para instalar y ejecutar el proyecto.
-
 Los repositorios con el código fuente se pueden encontrar en:
 
 - Backend: [HealthAxis-Backend](https://github.com/bigfoot-888/HealthAxis-Backend)
