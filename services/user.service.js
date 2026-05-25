@@ -266,7 +266,7 @@ async function deactivateUser(uuid) {
         });
 
         if (activeAppointments) {
-            throw new ValidationError('No se puede dar de baja a un paciente con citas activas.', 400, {
+            throw new ValidationError('No se puede dar de baja a un usuario con citas activas.', 400, {
                 activeAppointments,
             });
         }
