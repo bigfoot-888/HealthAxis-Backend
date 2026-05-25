@@ -12,10 +12,10 @@ router.use(requireAuth);
 
 router.get('/', requirePermission("dashboard:read"), asyncHandler(dashboardController.getDashboardController));
 
-router.patch('/layout', requirePermission("dashboard:read"), asyncHandler(dashboardController.updateLayoutController));
+router.patch('/layout', requirePermission("dashboard:update"), asyncHandler(dashboardController.updateLayoutController));
 
-router.delete('/components/:id', requirePermission("dashboard:read"), asyncHandler(dashboardController.deleteComponentController));
+router.delete('/components/:id', requirePermission("dashboard:delete"), asyncHandler(dashboardController.deleteComponentController));
 
-router.post('/components', requirePermission("dashboard:read"), asyncHandler(dashboardController.createComponentController));
+router.post('/components', requirePermission("dashboard:create"), asyncHandler(dashboardController.createComponentController));
 
 module.exports = router;

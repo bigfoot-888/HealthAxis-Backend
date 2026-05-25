@@ -310,7 +310,7 @@ async function executeDynamicQuery(queryDef, userId) {
         where.userId = userId;
     }
 
-    // ===== LIST =====
+    // If the type is list, then it is a list
     if (queryDef.type === 'LIST') {
         const results = await Model.findAll({
             where,
@@ -321,7 +321,7 @@ async function executeDynamicQuery(queryDef, userId) {
         return results;
     }
 
-    // ===== KPI =====
+    // If there is no groupby, assume that it is a KPI
     if (!groupBy) {
         if (aggregation === 'COUNT') {
             const count = await Model.count({ where });
@@ -337,8 +337,7 @@ async function executeDynamicQuery(queryDef, userId) {
         return { value: Number(result[0]?.value) || 0 };
     }
 
-    // ===== CHART =====
-
+    // Else it is a chart
     let xAttribute;
     let groupCondition;
 

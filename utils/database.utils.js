@@ -53,6 +53,7 @@ async function seedRolesAndPermissions() {
         'patient-flow:update',
 
         // Dashboard
+        'dashboard:create',
         'dashboard:read',
         'dashboard:update',
         'dashboard:delete',
